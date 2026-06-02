@@ -9,8 +9,8 @@ import { UserCheck, Mail, Users, FileSearch, Info, ShieldCheck } from "lucide-re
 export const ManualSecretaria = () => {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="bg-gradient-to-r from-orange-500/10 to-transparent p-6 rounded-2xl border border-orange-500/20">
-        <h2 className="text-xl font-black text-orange-600 flex items-center gap-2 mb-2">
+      <div className="bg-orange-500/10 p-6 rounded-2xl border border-orange-500/20">
+        <h2 className="text-xl font-bold text-orange-600 flex items-center gap-2 mb-2">
           <ShieldCheck className="h-6 w-6" />
           Guia de Operações da Secretaria
         </h2>

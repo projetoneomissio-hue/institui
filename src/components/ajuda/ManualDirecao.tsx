@@ -9,8 +9,8 @@ import { LayoutDashboard, BarChart3, Coins, Database, Info, ShieldCheck } from "
 export const ManualDirecao = () => {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="bg-gradient-to-r from-success/10 to-transparent p-6 rounded-2xl border border-success/20">
-        <h2 className="text-xl font-black text-success flex items-center gap-2 mb-2">
+      <div className="bg-success/10 p-6 rounded-2xl border border-success/20">
+        <h2 className="text-xl font-bold text-success flex items-center gap-2 mb-2">
           <ShieldCheck className="h-6 w-6" />
           Painel de Liderança Estratégica
         </h2>

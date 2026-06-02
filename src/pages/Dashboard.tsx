@@ -274,11 +274,14 @@ const Dashboard = () => {
   return (
     <DashboardLayout>
       <div className="p-3 sm:p-6 lg:p-8 space-y-8">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-            Bem-vindo ao sistema de gestão Zafen
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="w-1 h-9 bg-primary rounded-full shrink-0" />
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">Dashboard</h1>
+            <p className="text-muted-foreground mt-0.5 text-sm">
+              Bem-vindo ao sistema de gestão Zafen
+            </p>
+          </div>
         </div>
 
         {/* Solicitações de Matrícula (Admission Funnel) */}
@@ -356,6 +359,7 @@ const Dashboard = () => {
             icon={Users}
             description="Alunos cadastrados"
             isLoading={loadingAlunos}
+            variant="alunos"
           />
           <DashboardCard
             title="Atividades Ativas"
@@ -363,6 +367,7 @@ const Dashboard = () => {
             icon={GraduationCap}
             description="Modalidades oferecidas"
             isLoading={loadingAtividadesAtivas}
+            variant="atividades"
           />
           <DashboardCard
             title="Receita Mensal"
@@ -370,6 +375,7 @@ const Dashboard = () => {
             icon={DollarSign}
             description="Pagamentos recebidos"
             isLoading={loadingReceita}
+            variant="financeiro"
           />
           <DashboardCard
             title="Taxa de Ocupação"
@@ -377,11 +383,18 @@ const Dashboard = () => {
             icon={TrendingUp}
             description="Capacidade utilizada"
             isLoading={loadingOcupacao}
+            variant="ocupacao"
           />
         </div>
 
         {/* Quick Overview */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-0.5 h-4 bg-muted-foreground/40 rounded-full" />
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Visão Geral</h2>
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 -mt-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Atividades Populares</CardTitle>

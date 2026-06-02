@@ -9,6 +9,7 @@ import { UnidadeProvider } from "@/contexts/UnidadeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PostHogProvider } from "@/providers/PostHogProvider";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeColorInjector } from "@/components/ThemeColorInjector";
 
 import Index from "./pages/Index";
 // [ZAFEM-FUTURE] Planos e Checkout desativados temporariamente — serão usados na multiplataforma
@@ -42,8 +43,8 @@ import ManagementDashboard from "./pages/direcao/ManagementDashboard";
 import Coordenadores from "./pages/direcao/Coordenadores";
 import Interessados from "./pages/direcao/Interessados";
 import Comunicados from "./pages/direcao/Comunicados";
-import MatriculasPendentes from "./pages/direcao/MatriculasPendentes";
 import GestaoCobrancas from "./pages/direcao/GestaoCobrancas";
+import LandingEditor from "./pages/direcao/LandingEditor";
 
 // Coordenação
 import DashboardCoordenacao from "./pages/coordenacao/DashboardCoordenacao";
@@ -53,11 +54,11 @@ import GerenciarNotificacoes from "./pages/coordenacao/GerenciarNotificacoes";
 import RelatorioVoluntarios from "./pages/coordenacao/RelatorioVoluntarios";
 
 // Professores
+import DashboardProfessor from "./pages/professor/Dashboard";
 import Turmas from "./pages/professor/Turmas";
 import Chamada from "./pages/professor/Chamada";
 import GradeAvaliacao from "./pages/professor/GradeAvaliacao";
 import AlunosProfessor from "./pages/professor/Alunos";
-import Presenca from "./pages/professor/Presenca";
 import Observacoes from "./pages/professor/Observacoes";
 import Comissoes from "./pages/professor/Comissoes";
 
@@ -74,8 +75,6 @@ import PagamentoSucesso from "./pages/responsavel/PagamentoSucesso";
 
 // Secretaria (Voluntários)
 import DashboardSecretaria from "./pages/secretaria/DashboardSecretaria";
-import ConvitesLegados from "./pages/secretaria/ConvitesLegados";
-import GestaoLegados from "./pages/secretaria/GestaoLegados";
 
 // Shared Management/Secretaria
 import PreCadastro from "./pages/shared/PreCadastro";
@@ -117,6 +116,7 @@ export const AppRoutes = () => {
       <Route path="/calendario" element={<ProtectedRoute><CalendarioEscolar /></ProtectedRoute>} />
 
       {/* Direção */}
+      <Route path="/direcao" element={<Navigate to="/direcao/dashboard" replace />} />
       <Route path="/direcao/dashboard" element={<ProtectedRoute allowedRoles={["direcao"]}><ManagementDashboard /></ProtectedRoute>} />
       <Route path="/direcao/usuarios" element={<ProtectedRoute allowedRoles={["direcao"]}><Usuarios /></ProtectedRoute>} />
       <Route path="/direcao/coordenadores" element={<ProtectedRoute allowedRoles={["direcao"]}><Coordenadores /></ProtectedRoute>} />
@@ -124,12 +124,13 @@ export const AppRoutes = () => {
       <Route path="/direcao/matriculas" element={<ProtectedRoute allowedRoles={["direcao"]}><Matriculas /></ProtectedRoute>} />
       <Route path="/direcao/turmas" element={<ProtectedRoute allowedRoles={["direcao", "coordenacao"]}><TurmasCoordenacao /></ProtectedRoute>} />
       <Route path="/direcao/interessados" element={<ProtectedRoute allowedRoles={["direcao", "coordenacao"]}><Interessados /></ProtectedRoute>} />
-      <Route path="/direcao/matriculas-pendentes" element={<ProtectedRoute allowedRoles={["direcao"]}><MatriculasPendentes /></ProtectedRoute>} />
       <Route path="/direcao/cobrancas" element={<ProtectedRoute allowedRoles={["direcao"]}><GestaoCobrancas /></ProtectedRoute>} />
       <Route path="/direcao/comunicados" element={<ProtectedRoute allowedRoles={["direcao"]}><Comunicados /></ProtectedRoute>} />
       <Route path="/direcao/pre-cadastro" element={<ProtectedRoute allowedRoles={["direcao"]}><PreCadastro /></ProtectedRoute>} />
+      <Route path="/direcao/landing" element={<ProtectedRoute allowedRoles={["direcao"]}><LandingEditor /></ProtectedRoute>} />
 
       {/* Coordenação */}
+      <Route path="/coordenacao" element={<Navigate to="/coordenacao/dashboard" replace />} />
       <Route path="/coordenacao/dashboard" element={<ProtectedRoute allowedRoles={["coordenacao"]}><DashboardCoordenacao /></ProtectedRoute>} />
       <Route path="/coordenacao/turmas" element={<ProtectedRoute allowedRoles={["coordenacao", "direcao"]}><TurmasCoordenacao /></ProtectedRoute>} />
       <Route path="/coordenacao/relatorios" element={<ProtectedRoute allowedRoles={["coordenacao"]}><Relatorios /></ProtectedRoute>} />
@@ -137,15 +138,17 @@ export const AppRoutes = () => {
       <Route path="/coordenacao/voluntarios" element={<ProtectedRoute allowedRoles={["coordenacao", "direcao"]}><RelatorioVoluntarios /></ProtectedRoute>} />
 
       {/* Professores */}
+      <Route path="/professor" element={<Navigate to="/professor/dashboard" replace />} />
+      <Route path="/professor/dashboard" element={<ProtectedRoute allowedRoles={["professor"]}><DashboardProfessor /></ProtectedRoute>} />
       <Route path="/professor/turmas" element={<ProtectedRoute allowedRoles={["professor"]}><Turmas /></ProtectedRoute>} />
       <Route path="/professor/chamada" element={<ProtectedRoute allowedRoles={["professor"]}><Chamada /></ProtectedRoute>} />
       <Route path="/professor/avaliacoes" element={<ProtectedRoute allowedRoles={["professor"]}><GradeAvaliacao /></ProtectedRoute>} />
       <Route path="/professor/alunos" element={<ProtectedRoute allowedRoles={["professor"]}><AlunosProfessor /></ProtectedRoute>} />
-      <Route path="/professor/presenca" element={<ProtectedRoute allowedRoles={["professor"]}><Presenca /></ProtectedRoute>} />
       <Route path="/professor/observacoes" element={<ProtectedRoute allowedRoles={["professor"]}><Observacoes /></ProtectedRoute>} />
       <Route path="/professor/comissoes" element={<ProtectedRoute allowedRoles={["professor"]}><Comissoes /></ProtectedRoute>} />
 
       {/* Responsáveis */}
+      <Route path="/responsavel" element={<Navigate to="/responsavel/dashboard" replace />} />
       <Route path="/responsavel/dashboard" element={<ProtectedRoute allowedRoles={["responsavel"]}><DashboardResponsavel /></ProtectedRoute>} />
       <Route path="/responsavel/nova-matricula" element={<ProtectedRoute allowedRoles={["responsavel"]}><NovaMatricula /></ProtectedRoute>} />
       <Route path="/responsavel/atividades-matriculadas" element={<ProtectedRoute allowedRoles={["responsavel"]}><AtividadesMatriculadas /></ProtectedRoute>} />
@@ -157,13 +160,12 @@ export const AppRoutes = () => {
       <Route path="/responsavel/pagamento-sucesso" element={<ProtectedRoute allowedRoles={["responsavel"]}><PagamentoSucesso /></ProtectedRoute>} />
 
       {/* Secretaria (Voluntários) */}
+      <Route path="/secretaria" element={<Navigate to="/secretaria/dashboard" replace />} />
       <Route path="/secretaria/dashboard" element={<ProtectedRoute allowedRoles={["secretaria"]}><DashboardSecretaria /></ProtectedRoute>} />
       <Route path="/secretaria/cadastrar-aluno" element={<ProtectedRoute allowedRoles={["secretaria"]}><CadastrarAluno /></ProtectedRoute>} />
       <Route path="/secretaria/nova-matricula" element={<ProtectedRoute allowedRoles={["secretaria"]}><NovaMatricula /></ProtectedRoute>} />
       <Route path="/secretaria/alunos" element={<ProtectedRoute allowedRoles={["secretaria"]}><Alunos /></ProtectedRoute>} />
       <Route path="/secretaria/pre-cadastro" element={<ProtectedRoute allowedRoles={["secretaria", "direcao"]}><PreCadastro /></ProtectedRoute>} />
-      <Route path="/secretaria/convites-legados" element={<ProtectedRoute allowedRoles={["secretaria", "direcao"]}><ConvitesLegados /></ProtectedRoute>} />
-      <Route path="/secretaria/gestao-legados" element={<ProtectedRoute allowedRoles={["secretaria", "direcao"]}><GestaoLegados /></ProtectedRoute>} />
 
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="/ajuda" element={<ProtectedRoute><Ajuda /></ProtectedRoute>} />
@@ -178,6 +180,7 @@ const App = () => (
       <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
         <AuthProvider>
           <UnidadeProvider>
+            <ThemeColorInjector />
             <TooltipProvider>
               <PostHogProvider>
                 <Toaster />

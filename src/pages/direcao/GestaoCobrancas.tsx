@@ -42,6 +42,7 @@ const GestaoCobrancas = () => {
     const [turmaFilter, setTurmaFilter] = useState("todas");
     const [baixaManualOpen, setBaixaManualOpen] = useState(false);
     const [selectedPagamento, setSelectedPagamento] = useState<any>(null);
+    const [formaPagamentoBaixa, setFormaPagamentoBaixa] = useState("");
     const [sendingEmail, setSendingEmail] = useState<string | null>(null);
 
     // Estado do modal de edição de alunos
@@ -112,22 +113,35 @@ const GestaoCobrancas = () => {
     const baixaManualMutation = useMutation({
         mutationFn: async () => {
             if (!selectedPagamento) return;
+            const isConfirmando = selectedPagamento.status === "aguardando_confirmacao";
+            const formaFinal = isConfirmando
+                ? selectedPagamento.forma_pagamento
+                : (formaPagamentoBaixa || "Dinheiro");
             const { error } = await supabase
                 .from("pagamentos")
                 .update({
                     status: "pago",
-                    forma_pagamento: "Baixa Manual",
+                    forma_pagamento: formaFinal,
                     data_pagamento: new Date().toISOString().split("T")[0],
-                    observacoes: "Pagamento recebido fisicamente ou via Pix direto."
+                    observacoes: isConfirmando
+                        ? `Pagamento confirmado pela diretoria. Forma informada pelo responsável: ${selectedPagamento.forma_pagamento || "não informada"}.`
+                        : `Baixa manual. Forma: ${formaFinal}.`
                 })
                 .eq("id", selectedPagamento.id);
             if (error) throw error;
         },
         onSuccess: () => {
-            toast({ title: "✅ Baixa manual realizada!" });
+            toast({ title: "✅ Pagamento confirmado!" });
             queryClient.invalidateQueries({ queryKey: ["gestao-cobrancas"] });
+            queryClient.invalidateQueries({ queryKey: ["pagamentos-responsavel"] });
+            queryClient.invalidateQueries({ queryKey: ["pagamentos-pendentes"] });
+            queryClient.invalidateQueries({ queryKey: ["management-kpis"] });
+            queryClient.invalidateQueries({ queryKey: ["management-fluxo-caixa"] });
+            queryClient.invalidateQueries({ queryKey: ["management-receita-atividade"] });
+            queryClient.invalidateQueries({ queryKey: ["management-inadimplentes"] });
             setBaixaManualOpen(false);
             setSelectedPagamento(null);
+            setFormaPagamentoBaixa("");
         },
         onError: (error: any) => {
             toast({ title: "Erro na baixa", description: error.message, variant: "destructive" });
@@ -138,8 +152,8 @@ const GestaoCobrancas = () => {
         const telefone = pag.matricula?.aluno?.responsavel?.telefone?.replace(/\D/g, '') || "";
         const nomeResp = pag.matricula?.aluno?.responsavel?.nome_completo?.split(" ")[0] || "Responsável";
         const nomeAluno = pag.matricula?.aluno?.nome_completo || "Aluno";
-        const linkToUse = pag.gateway_url || "https://sistema.neomissio.com.br";
-        const textMsg = `Olá ${nomeResp}! Aqui é da Neo Missio. Segue o link para pagamento (${pag.descricao || "Mensalidade"}) de ${nomeAluno}: ${linkToUse}`;
+        const linkToUse = pag.gateway_url || window.location.origin;
+        const textMsg = `Olá ${nomeResp}! Aqui é de ${currentUnidade?.nome || 'nossa Unidade'}. Segue o link para pagamento (${pag.descricao || "Mensalidade"}) de ${nomeAluno}: ${linkToUse}`;
         window.open(`https://wa.me/55${telefone}?text=${encodeURIComponent(textMsg)}`, '_blank');
     };
 
@@ -208,7 +222,8 @@ const GestaoCobrancas = () => {
             const matchStatus = statusFilter === "todos" ||
                 (statusFilter === "pendente" && p.status === "pendente" && !vencido) ||
                 (statusFilter === "vencido" && vencido) ||
-                (statusFilter === "pago" && p.status === "pago");
+                (statusFilter === "pago" && p.status === "pago") ||
+                (statusFilter === "aguardando" && p.status === "aguardando_confirmacao");
 
             const matchAtividade = atividadeFilter === "todas" || p.matricula?.turma?.atividade?.id === atividadeFilter;
             const matchTurma = turmaFilter === "todas" || p.matricula?.turma?.id === turmaFilter;
@@ -222,6 +237,7 @@ const GestaoCobrancas = () => {
         return filteredPagamentos.reduce((acc, curr) => {
             const vencido = curr.status === "pendente" && new Date(curr.data_vencimento) < new Date();
             if (curr.status === "pago") acc.recebido += Number(curr.valor);
+            else if (curr.status === "aguardando_confirmacao") acc.pendente += Number(curr.valor);
             else if (vencido) {
                 acc.vencido += Number(curr.valor);
 
@@ -239,6 +255,10 @@ const GestaoCobrancas = () => {
             return acc;
         }, { pendente: 0, vencido: 0, recebido: 0, inadimplentesCount: 0, maiorAtraso: 0, inadimplentesSet: new Set<string>() });
     }, [filteredPagamentos]);
+
+    const pagamentosAguardando = useMemo(() => {
+        return pagamentos?.filter(p => p.status === "aguardando_confirmacao") || [];
+    }, [pagamentos]);
 
     const limparFiltros = () => {
         setSearchTerm("");
@@ -320,7 +340,7 @@ const GestaoCobrancas = () => {
                             <CardTitle className="text-sm font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">A Receber</CardTitle>
                         </CardHeader>
                         <CardContent className="px-4 pb-3">
-                            <div className="text-2xl lg:text-3xl font-black text-indigo-700 dark:text-indigo-300">
+                            <div className="text-2xl lg:text-3xl font-bold text-indigo-700 dark:text-indigo-300">
                                 {totais.pendente.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </div>
                         </CardContent>
@@ -334,7 +354,7 @@ const GestaoCobrancas = () => {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="px-4 pb-3">
-                            <div className="text-2xl lg:text-3xl font-black text-red-700 dark:text-red-300">
+                            <div className="text-2xl lg:text-3xl font-bold text-red-700 dark:text-red-300">
                                 {totais.vencido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </div>
                         </CardContent>
@@ -349,7 +369,7 @@ const GestaoCobrancas = () => {
                         </CardHeader>
                         <CardContent className="px-4 pb-3 flex justify-between items-end">
                             <div>
-                                <div className="text-2xl lg:text-3xl font-black text-red-700 dark:text-red-300">
+                                <div className="text-2xl lg:text-3xl font-bold text-red-700 dark:text-red-300">
                                     {totais.inadimplentesCount}
                                 </div>
                                 <p className="text-xs text-red-600/70 font-semibold dark:text-red-400/70">alunos atrasados</p>
@@ -368,12 +388,39 @@ const GestaoCobrancas = () => {
                             <CardTitle className="text-sm font-bold text-green-600 dark:text-green-400 uppercase tracking-wider">Recebido</CardTitle>
                         </CardHeader>
                         <CardContent className="px-4 pb-3">
-                            <div className="text-2xl lg:text-3xl font-black text-green-700 dark:text-green-300">
+                            <div className="text-2xl lg:text-3xl font-bold text-green-700 dark:text-green-300">
                                 {totais.recebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </div>
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Banner Aguardando Confirmação */}
+                {pagamentosAguardando.length > 0 && (
+                    <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-500/10 border-2 border-blue-500/30">
+                        <div className="h-9 w-9 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                            <Clock className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-bold text-foreground text-sm">
+                                {pagamentosAguardando.length === 1
+                                    ? "1 pagamento aguardando confirmação"
+                                    : `${pagamentosAguardando.length} pagamentos aguardando confirmação`}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                Responsáveis avisaram que pagaram — confirme o recebimento para atualizar o status.
+                            </p>
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="shrink-0 text-blue-600 border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-xs font-bold"
+                            onClick={() => setStatusFilter("aguardando")}
+                        >
+                            Ver Todos
+                        </Button>
+                    </div>
+                )}
 
                 {/* Filtros */}
                 <div className="bg-card border rounded-xl p-4 space-y-3">
@@ -408,6 +455,7 @@ const GestaoCobrancas = () => {
                                 <SelectItem value="pendente" className="text-base">🟡 Pendente</SelectItem>
                                 <SelectItem value="vencido" className="text-base">🔴 Vencido</SelectItem>
                                 <SelectItem value="pago" className="text-base">🟢 Pago</SelectItem>
+                                <SelectItem value="aguardando" className="text-base">🔵 Aguardando Confirmação</SelectItem>
                             </SelectContent>
                         </Select>
 
@@ -485,7 +533,8 @@ const GestaoCobrancas = () => {
                                                     "border-b last:border-b-0 transition-colors",
                                                     idx % 2 === 0 ? "bg-transparent" : "bg-muted/20",
                                                     pag.status === "pago" && "opacity-60",
-                                                    vencido && "bg-red-50/50 dark:bg-red-950/10"
+                                                    vencido && "bg-red-50/50 dark:bg-red-950/10",
+                                                    pag.status === "aguardando_confirmacao" && "bg-blue-50/30 dark:bg-blue-950/10"
                                                 )}
                                             >
                                                 <td className="px-4 py-3">
@@ -525,6 +574,10 @@ const GestaoCobrancas = () => {
                                                             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 text-sm font-bold">
                                                                 <CheckCircle2 className="h-4 w-4" /> Pago
                                                             </span>
+                                                        ) : pag.status === "aguardando_confirmacao" ? (
+                                                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 text-sm font-bold">
+                                                                <Clock className="h-4 w-4" /> Aguard. Confirmação
+                                                            </span>
                                                         ) : vencido ? (
                                                             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 text-sm font-bold animate-pulse">
                                                                 <AlertCircle className="h-4 w-4" /> Vencido
@@ -543,6 +596,27 @@ const GestaoCobrancas = () => {
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
+                                                    {pag.status === "aguardando_confirmacao" && (
+                                                        <div className="flex items-center justify-end gap-1.5 flex-nowrap whitespace-nowrap">
+                                                            {pag.matricula?.aluno?.responsavel?.telefone && (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
+                                                                    onClick={() => window.open(`tel:${pag.matricula.aluno.responsavel.telefone}`)}
+                                                                >
+                                                                    <Phone className="h-4 w-4" />
+                                                                </Button>
+                                                            )}
+                                                            <Button
+                                                                size="sm"
+                                                                className="h-8 px-3 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+                                                                onClick={() => { setSelectedPagamento(pag); setBaixaManualOpen(true); }}
+                                                            >
+                                                                <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Confirmar
+                                                            </Button>
+                                                        </div>
+                                                    )}
                                                     {pag.status === "pendente" && (
                                                         <div className="flex items-center justify-end gap-1.5 flex-nowrap whitespace-nowrap">
                                                             {/* Phone Button */}
@@ -647,22 +721,43 @@ const GestaoCobrancas = () => {
                 <Dialog open={baixaManualOpen} onOpenChange={setBaixaManualOpen}>
                     <DialogContent className="sm:max-w-[450px]">
                         <DialogHeader>
-                            <DialogTitle className="text-xl">Confirmar Baixa Manual</DialogTitle>
+                            <DialogTitle className="text-xl">
+                                {selectedPagamento?.status === "aguardando_confirmacao"
+                                    ? "Confirmar Recebimento"
+                                    : "Confirmar Baixa Manual"}
+                            </DialogTitle>
                             <DialogDescription className="text-base">
-                                Marcar pagamento de <strong>{selectedPagamento?.matricula?.aluno?.nome_completo}</strong> como pago.
+                                {selectedPagamento?.status === "aguardando_confirmacao"
+                                    ? <>O responsável informou que pagou via <strong>{selectedPagamento?.forma_pagamento || "não informado"}</strong>.</>
+                                    : <>Marcar pagamento de <strong>{selectedPagamento?.matricula?.aluno?.nome_completo}</strong> como pago.</>}
                             </DialogDescription>
                         </DialogHeader>
                         <div className="py-3 space-y-3">
-                            <p className="text-base text-muted-foreground">
-                                Use apenas se o pagamento foi feito em dinheiro, depósito direto ou Pix pessoal (fora do sistema).
-                            </p>
                             <div className="bg-muted p-4 rounded-lg flex justify-between font-bold text-xl">
                                 <span>Valor:</span>
                                 <span>{selectedPagamento ? Number(selectedPagamento.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : "R$ 0,00"}</span>
                             </div>
+                            {selectedPagamento?.status !== "aguardando_confirmacao" && (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold">Como foi pago?</label>
+                                    <select
+                                        value={formaPagamentoBaixa}
+                                        onChange={(e) => setFormaPagamentoBaixa(e.target.value)}
+                                        className="w-full h-11 px-3 border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                    >
+                                        <option value="">Selecione a forma</option>
+                                        <option value="Dinheiro">Dinheiro</option>
+                                        <option value="Pix">Pix</option>
+                                        <option value="Cartão de Débito">Cartão de Débito</option>
+                                        <option value="Cartão de Crédito">Cartão de Crédito</option>
+                                        <option value="Transferência">Transferência</option>
+                                        <option value="Boleto">Boleto</option>
+                                    </select>
+                                </div>
+                            )}
                         </div>
                         <DialogFooter className="gap-2">
-                            <Button variant="outline" onClick={() => setBaixaManualOpen(false)} className="h-11 text-base">Cancelar</Button>
+                            <Button variant="outline" onClick={() => { setBaixaManualOpen(false); setFormaPagamentoBaixa(""); }} className="h-11 text-base">Cancelar</Button>
                             <Button
                                 onClick={() => baixaManualMutation.mutate()}
                                 disabled={baixaManualMutation.isPending}

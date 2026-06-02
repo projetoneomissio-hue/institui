@@ -3,16 +3,38 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, BookOpen, Clock, Calendar as CalendarIcon, ArrowRight, NotebookPen, Trophy } from "lucide-react";
+import { Users, BookOpen, Clock, Calendar as CalendarIcon, NotebookPen, Trophy } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 const Turmas = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const mode = searchParams.get("mode"); // "chamada" | "grade" | null
+
+  const modeConfig = {
+    chamada: {
+      label: "Chamada / Frequência",
+      subtitle: "Selecione uma turma para registrar a chamada.",
+      icon: NotebookPen,
+      color: "text-primary",
+      destination: (id: string) => `/professor/chamada?turma=${id}`,
+    },
+    grade: {
+      label: "Grade de Notas",
+      subtitle: "Selecione uma turma para lançar as avaliações.",
+      icon: Trophy,
+      color: "text-yellow-500",
+      destination: (id: string) => `/professor/avaliacoes?turma=${id}`,
+    },
+  } as const;
+
+  const activeModeConfig = mode === "chamada" || mode === "grade" ? modeConfig[mode] : null;
+  const defaultDestination = (id: string) => `/professor/chamada?turma=${id}`;
 
   const { data: turmas, isLoading } = useQuery({
     queryKey: ["professor-turmas", user?.id],
@@ -77,16 +99,20 @@ const Turmas = () => {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
-                <BookOpen className="h-4 w-4 text-primary" />
+              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${activeModeConfig ? "bg-primary/20" : "bg-primary/20"}`}>
+                {activeModeConfig ? (
+                  <activeModeConfig.icon className={`h-4 w-4 ${activeModeConfig.color}`} />
+                ) : (
+                  <BookOpen className="h-4 w-4 text-primary" />
+                )}
               </div>
-              <span className="text-sm font-bold text-primary tracking-widest uppercase">Portal do Professor</span>
+              <span className="text-sm font-semibold text-primary">Portal do Professor</span>
             </div>
-            <h1 className="text-4xl font-black tracking-tight text-foreground">
-              Minhas Turmas
+            <h1 className="text-2xl font-bold text-foreground">
+              {activeModeConfig ? activeModeConfig.label : "Minhas Turmas"}
             </h1>
-            <p className="text-muted-foreground mt-2 text-lg">
-              Gestão de turmas e acesso rápido ao diário de classe.
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {activeModeConfig ? activeModeConfig.subtitle : "Gestão de turmas e acesso rápido ao diário de classe."}
             </p>
           </div>
         </div>
@@ -94,7 +120,7 @@ const Turmas = () => {
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="glass border-white/10">
+              <Card key={i} className="border border-border">
                 <CardHeader>
                   <Skeleton className="h-6 w-3/4" />
                   <Skeleton className="h-4 w-1/2 mt-2" />
@@ -109,10 +135,8 @@ const Turmas = () => {
             ))}
           </div>
         ) : !turmas || turmas.length === 0 ? (
-          <Card className="glass border-white/5 bg-white/5 overflow-hidden relative">
-            {/* decorative background element */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-50 pointer-events-none" />
-            <CardContent className="flex flex-col items-center justify-center py-20 relative z-10 text-center px-4">
+          <Card className="overflow-hidden">
+            <CardContent className="flex flex-col items-center justify-center py-20 text-center px-4">
               <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mb-6 shadow-inner">
                 <Users className="h-10 w-10 text-muted-foreground opacity-50" />
               </div>
@@ -131,15 +155,12 @@ const Turmas = () => {
               return (
                 <Card
                   key={turma.id}
-                  className="group relative overflow-hidden glass border-white/10 hover:border-primary/30 transition-all duration-300 hover:shadow-[0_8px_32px_-4px_rgba(var(--primary),0.2)] hover:-translate-y-1 cursor-pointer"
-                  onClick={() => navigate(`/professor/chamada?turma=${turma.id}`)}
+                  className="group relative overflow-hidden hover:border-primary/30 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
+                  onClick={() => navigate(activeModeConfig ? activeModeConfig.destination(turma.id) : defaultDestination(turma.id))}
                 >
-                  {/* Hover Gradient Effect */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-                  <CardHeader className="pb-4 relative z-10">
+                  <CardHeader className="pb-4">
                     <div className="flex justify-between items-start mb-2">
-                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 backdrop-blur-md">
+                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
                         {turma.atividades?.nome}
                       </Badge>
                       <div className="flex -space-x-2">
@@ -153,7 +174,7 @@ const Turmas = () => {
                     </CardTitle>
                   </CardHeader>
 
-                  <CardContent className="relative z-10 space-y-5">
+                  <CardContent className="space-y-5">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 p-2 rounded-lg">
                         <CalendarIcon className="h-4 w-4 text-primary" />
@@ -185,8 +206,8 @@ const Turmas = () => {
 
                     <div className="pt-2 grid grid-cols-2 gap-3">
                       <Button
-                        className="w-full gap-2 group-hover:bg-primary group-hover:text-primary-foreground transition-colors h-10 shadow-lg shadow-primary/20"
-                        variant="secondary"
+                        className={`w-full gap-2 transition-colors h-10 ${mode === "chamada" ? "bg-primary text-primary-foreground" : "group-hover:bg-primary group-hover:text-primary-foreground"}`}
+                        variant={mode === "chamada" ? "default" : "secondary"}
                         onClick={(e) => {
                           e.stopPropagation();
                           navigate(`/professor/chamada?turma=${turma.id}`);
@@ -196,8 +217,8 @@ const Turmas = () => {
                         Chamada
                       </Button>
                       <Button
-                        className="w-full gap-2 hover:bg-yellow-500 hover:text-white transition-colors h-10 shadow-lg"
-                        variant="outline"
+                        className={`w-full gap-2 transition-colors h-10 ${mode === "grade" ? "bg-yellow-500 text-white" : "hover:bg-yellow-500 hover:text-white"}`}
+                        variant={mode === "grade" ? "default" : "outline"}
                         onClick={(e) => {
                           e.stopPropagation();
                           navigate(`/professor/avaliacoes?turma=${turma.id}`);

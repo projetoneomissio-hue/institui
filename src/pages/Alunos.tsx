@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, Loader2, Search, UserPlus } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Search, UserPlus, ArrowRightLeft, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PremiumEmptyState } from "@/components/ui/premium-empty-state";
@@ -110,6 +110,12 @@ const Alunos = () => {
   const [fichaOpen, setFichaOpen] = useState(false);
   const [selectedAlunoForFicha, setSelectedAlunoForFicha] = useState<any>(null);
 
+  // State Vincular Responsável
+  const [vincularOpen, setVincularOpen] = useState(false);
+  const [selectedAlunoForVincular, setSelectedAlunoForVincular] = useState<any>(null);
+  const [parentSearch, setParentSearch] = useState("");
+  const [showSemResponsavel, setShowSemResponsavel] = useState(false);
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -180,6 +186,44 @@ const Alunos = () => {
     },
   });
 
+  // Query busca de responsáveis reais para vinculação
+  const { data: realParents } = useQuery({
+    queryKey: ["real-parents-search", parentSearch],
+    enabled: parentSearch.length >= 2,
+    queryFn: async () => {
+      const GHOST_NAMES = ["Responsável Legado", "LEGADO - Pendente de Responsável"];
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, nome_completo, email")
+        .not("nome_completo", "in", `(${GHOST_NAMES.map(n => `"${n}"`).join(",")})`)
+        .or(`nome_completo.ilike.%${parentSearch}%,email.ilike.%${parentSearch}%`)
+        .limit(10);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Mutation para vincular aluno a responsável real
+  const vincularMutation = useMutation({
+    mutationFn: async ({ alunoId, parentId }: { alunoId: string; parentId: string }) => {
+      const { error } = await supabase
+        .from("alunos")
+        .update({ responsavel_id: parentId })
+        .eq("id", alunoId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["alunos"] });
+      setVincularOpen(false);
+      setSelectedAlunoForVincular(null);
+      setParentSearch("");
+      toast({ title: "Responsável vinculado", description: "O aluno foi vinculado com sucesso." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleOpenDialog = (aluno?: any) => {
     if (aluno) {
       setEditingAluno(aluno);
@@ -225,7 +269,15 @@ const Alunos = () => {
     }
   };
 
+  const GHOST_NAMES = ["Responsável Legado", "LEGADO - Pendente de Responsável"];
+  const isSemResponsavel = (aluno: any) =>
+    !aluno.responsavel || GHOST_NAMES.includes(aluno.responsavel?.nome_completo);
+
+  const semResponsavelCount = alunos?.filter(isSemResponsavel).length ?? 0;
+
   const filteredAlunos = alunos?.filter((aluno) => {
+    if (showSemResponsavel) return isSemResponsavel(aluno);
+
     const matchesSearch = aluno.nome_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       aluno.cpf?.includes(searchTerm) ||
       aluno.bairro?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -265,15 +317,31 @@ const Alunos = () => {
       <div className="p-3 sm:p-6 lg:p-8 space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Alunos</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-2xl font-bold text-foreground">Alunos</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
               Gerencie todos os alunos cadastrados
             </p>
           </div>
-          <Button onClick={() => handleOpenDialog()} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Novo Aluno
-          </Button>
+          <div className="flex items-center gap-2">
+            {semResponsavelCount > 0 && (
+              <Button
+                variant={showSemResponsavel ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowSemResponsavel(!showSemResponsavel)}
+                className={`gap-2 ${showSemResponsavel ? "" : "border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"}`}
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Sem Responsável
+                <span className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${showSemResponsavel ? "bg-primary-foreground/20 text-primary-foreground" : "bg-amber-500/15 text-amber-700 dark:text-amber-400"}`}>
+                  {semResponsavelCount}
+                </span>
+              </Button>
+            )}
+            <Button onClick={() => handleOpenDialog()} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Novo Aluno
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-col gap-4">
@@ -283,7 +351,7 @@ const Alunos = () => {
               placeholder="Buscar aluno por nome, CPF ou bairro..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 h-12 bg-background/50 backdrop-blur-sm"
+              className="pl-10 h-12"
             />
           </div>
 
@@ -355,7 +423,7 @@ const Alunos = () => {
               <CardTitle>Lista de Alunos</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border bg-card/30 backdrop-blur-sm overflow-hidden">
+              <div className="rounded-md border overflow-hidden">
                 {/* Desktop Table View */}
                 <div className="hidden md:block overflow-x-auto">
                   <Table>
@@ -418,6 +486,17 @@ const Alunos = () => {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
+                              {isSemResponsavel(aluno) && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => { setSelectedAlunoForVincular(aluno); setVincularOpen(true); }}
+                                  className="h-8 px-2.5 gap-1.5 border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                                >
+                                  <ArrowRightLeft className="h-3.5 w-3.5" />
+                                  <span className="hidden lg:inline">Vincular</span>
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -485,20 +564,20 @@ const Alunos = () => {
                           <div>
                             <button
                               onClick={() => handleOpenFicha(aluno)}
-                              className="font-black text-foreground text-left leading-tight"
+                              className="font-semibold text-foreground text-left leading-tight"
                             >
                               {aluno.nome_completo}
                             </button>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-0.5">
+                            <p className="text-xs text-muted-foreground mt-0.5">
                               {aluno.serie_ano || "Série não informada"}
                             </p>
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           {aluno.anamneses?.[0]?.is_pne ? (
-                            <Badge className="bg-red-500/10 text-red-500 border-none text-[9px] h-5 uppercase px-1.5 font-black">Saúde !</Badge>
+                            <Badge className="bg-red-500/10 text-red-500 border-none text-[9px] h-5 uppercase px-1.5 font-semibold">Saúde !</Badge>
                           ) : (
-                            <Badge className="bg-green-500/10 text-green-500 border-none text-[9px] h-5 uppercase px-1.5 font-black text-center">OK</Badge>
+                            <Badge className="bg-green-500/10 text-green-500 border-none text-[9px] h-5 uppercase px-1.5 font-semibold">OK</Badge>
                           )}
                         </div>
                       </div>
@@ -600,6 +679,67 @@ const Alunos = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog >
+
+        {/* Dialog Vincular Responsável */}
+        <Dialog
+          open={vincularOpen}
+          onOpenChange={(open) => {
+            if (!open) { setVincularOpen(false); setSelectedAlunoForVincular(null); setParentSearch(""); }
+          }}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ArrowRightLeft className="h-5 w-5 text-amber-500" />
+                Vincular Responsável
+              </DialogTitle>
+              <DialogDescription>
+                Escolha o responsável real para <strong>{selectedAlunoForVincular?.nome_completo}</strong>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome ou e-mail..."
+                  value={parentSearch}
+                  onChange={(e) => setParentSearch(e.target.value)}
+                  className="pl-10"
+                  autoFocus
+                />
+              </div>
+              {parentSearch.length >= 2 ? (
+                <div className="max-h-60 overflow-y-auto space-y-1 border rounded-lg p-2">
+                  {realParents && realParents.length > 0 ? (
+                    realParents.map((parent: any) => (
+                      <button
+                        key={parent.id}
+                        className="w-full text-left px-3 py-2.5 rounded-md hover:bg-accent transition-colors"
+                        onClick={() => vincularMutation.mutate({ alunoId: selectedAlunoForVincular.id, parentId: parent.id })}
+                        disabled={vincularMutation.isPending}
+                      >
+                        <p className="font-semibold text-sm text-foreground">{parent.nome_completo}</p>
+                        <p className="text-xs text-muted-foreground">{parent.email}</p>
+                      </button>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum responsável encontrado</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-2">
+                  Digite pelo menos 2 caracteres para buscar
+                </p>
+              )}
+              {vincularMutation.isPending && (
+                <div className="flex items-center justify-center gap-2 py-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm text-muted-foreground">Vinculando...</span>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Sheet do Histórico de Contatos */}
         < Sheet open={timelineOpen} onOpenChange={setTimelineOpen} >

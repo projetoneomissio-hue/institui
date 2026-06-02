@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, CheckCircle2, AlertCircle, FileText, Wallet, Calendar, CreditCard as CardIcon } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Wallet, Calendar, CreditCard as CardIcon, Clock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -41,26 +41,35 @@ const RegistrarPagamento = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Fetch pagamentos pendentes do responsável
   const { data: pagamentosPendentes, isLoading } = useQuery({
-    queryKey: ["pagamentos-pendentes", user?.id],
+    queryKey: ["pagamentos-responsavel", user?.id],
     queryFn: async () => {
       if (!user) return [];
 
+      // Step 1: alunos do responsável
+      const { data: alunosData } = await supabase
+        .from("alunos").select("id").eq("responsavel_id", user.id);
+      if (!alunosData?.length) return [];
+      const alunoIds = alunosData.map((a: any) => a.id);
+
+      // Step 2: matrículas desses alunos
+      const { data: matriculasData } = await supabase
+        .from("matriculas").select("id").in("aluno_id", alunoIds);
+      if (!matriculasData?.length) return [];
+      const matriculaIds = matriculasData.map((m: any) => m.id);
+
+      // Step 3: pagamentos pendentes ou aguardando confirmação
       const { data, error } = await supabase
         .from("pagamentos")
         .select(`
-          *,
-          matricula:matriculas!inner(
-            aluno:alunos!inner(nome_completo, responsavel_id),
-            turma:turmas(
-              nome,
-              atividade:atividades(nome)
-            )
+          id, valor, data_vencimento, status, forma_pagamento,
+          matricula:matriculas(
+            aluno:alunos(nome_completo),
+            turma:turmas(nome, atividade:atividades(nome))
           )
         `)
-        .eq("status", "pendente")
-        .eq("matricula.aluno.responsavel_id", user.id)
+        .in("matricula_id", matriculaIds)
+        .in("status", ["pendente", "aguardando_confirmacao"])
         .order("data_vencimento", { ascending: true });
 
       if (error) throw error;
@@ -69,21 +78,17 @@ const RegistrarPagamento = () => {
     enabled: !!user,
   });
 
-  // Mutation para registrar pagamento
-  const registrarPagamentoMutation = useMutation({
+  const avisarPagamentoMutation = useMutation({
     mutationFn: async (data: {
       pagamento_id: string;
       forma_pagamento: string;
       observacoes: string;
     }) => {
-      const hoje = new Date().toISOString().split("T")[0];
-
       const { error } = await supabase
         .from("pagamentos")
         .update({
-          status: "pago",
+          status: "aguardando_confirmacao",
           forma_pagamento: data.forma_pagamento,
-          data_pagamento: hoje,
           observacoes: data.observacoes || null,
         })
         .eq("id", data.pagamento_id);
@@ -91,17 +96,18 @@ const RegistrarPagamento = () => {
       if (error) throw error;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pagamentos-responsavel"] });
       queryClient.invalidateQueries({ queryKey: ["pagamentos-pendentes"] });
       toast({
-        title: "Pagamento registrado!",
-        description: "O pagamento foi registrado com sucesso.",
+        title: "Aviso enviado!",
+        description: "A diretoria será notificada e confirmará seu pagamento em breve.",
       });
       handleCloseDialog();
     },
     onError: (error: any) => {
       toast({
-        title: "Erro ao registrar pagamento",
-        description: error.message || "Não foi possível registrar o pagamento.",
+        title: "Erro ao enviar aviso",
+        description: error.message || "Não foi possível enviar o aviso de pagamento.",
         variant: "destructive",
       });
     },
@@ -125,27 +131,32 @@ const RegistrarPagamento = () => {
     if (!formaPagamento) {
       toast({
         title: "Forma de pagamento obrigatória",
-        description: "Selecione a forma de pagamento.",
+        description: "Selecione como o pagamento foi realizado.",
         variant: "destructive",
       });
       return;
     }
 
-    registrarPagamentoMutation.mutate({
+    avisarPagamentoMutation.mutate({
       pagamento_id: selectedPagamentoId,
       forma_pagamento: formaPagamento,
       observacoes: observacoes,
     });
   };
 
-  const isDueOrOverdue = (dataVencimento: string) => {
+  const isDueOrOverdue = (dataVencimento: string, status: string) => {
+    if (status === "aguardando_confirmacao") return false;
     const hoje = new Date();
     const vencimento = new Date(dataVencimento);
     const diffDias = Math.ceil((vencimento.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
     return diffDias <= 7;
   };
 
-  const getStatusBadge = (dataVencimento: string) => {
+  const getStatusBadge = (dataVencimento: string, status: string) => {
+    if (status === "aguardando_confirmacao") {
+      return <Badge className="bg-blue-500 text-white border-none font-bold px-3">Aguard. Confirmação</Badge>;
+    }
+
     const hoje = new Date();
     const vencimento = new Date(dataVencimento);
     const diffDias = Math.ceil((vencimento.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
@@ -162,9 +173,9 @@ const RegistrarPagamento = () => {
     <DashboardLayout>
       <div className="p-6 lg:p-8 space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Registrar Pagamento</h1>
+          <h1 className="text-3xl font-bold text-foreground">Meus Pagamentos</h1>
           <p className="text-muted-foreground mt-1">
-            Informe os pagamentos realizados
+            Acompanhe e informe pagamentos realizados
           </p>
         </div>
 
@@ -181,7 +192,7 @@ const RegistrarPagamento = () => {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
             {pagamentosPendentes.map((pagamento: any) => (
               <Card key={pagamento.id} className="overflow-hidden border-primary/10 hover:border-primary/30 transition-all hover:shadow-lg hover:shadow-primary/5 group">
-                <div className="h-2 w-full bg-gradient-to-r from-neomissio-primary to-purple-600 opacity-80" />
+                <div className={`h-1 w-full ${pagamento.status === "aguardando_confirmacao" ? "bg-blue-500" : "bg-primary"}`} />
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between">
                     <div className="space-y-1.5">
@@ -189,7 +200,7 @@ const RegistrarPagamento = () => {
                         <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
                           <CardIcon className="h-4 w-4" />
                         </span>
-                        <CardTitle className="text-xl font-black tracking-tight">
+                        <CardTitle className="text-xl font-semibold">
                           {pagamento.matricula.aluno.nome_completo}
                         </CardTitle>
                       </div>
@@ -198,13 +209,13 @@ const RegistrarPagamento = () => {
                         {pagamento.matricula.turma.atividade.nome} • {pagamento.matricula.turma.nome}
                       </div>
                     </div>
-                    {getStatusBadge(pagamento.data_vencimento)}
+                    {getStatusBadge(pagamento.data_vencimento, pagamento.status)}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5 p-3 rounded-xl bg-muted/20 border border-border/50">
-                      <div className="flex items-center gap-1.5 text-xs uppercase font-bold text-muted-foreground tracking-widest">
+                      <div className="flex items-center gap-1.5 text-xs uppercase text-muted-foreground">
                         <Calendar className="h-3 w-3" /> Vencimento
                       </div>
                       <p className="text-sm font-bold text-foreground">
@@ -214,10 +225,10 @@ const RegistrarPagamento = () => {
                       </p>
                     </div>
                     <div className="space-y-1.5 p-3 rounded-xl bg-primary/5 border border-primary/10">
-                      <div className="flex items-center gap-1.5 text-xs uppercase font-bold text-primary tracking-widest">
+                      <div className="flex items-center gap-1.5 text-xs uppercase text-primary">
                         <Wallet className="h-3 w-3" /> Valor Total
                       </div>
-                      <p className="text-sm font-black text-primary">
+                      <p className="text-sm font-semibold text-primary">
                         R$ {parseFloat(pagamento.valor.toString()).toLocaleString("pt-BR", {
                           minimumFractionDigits: 2,
                         })}
@@ -225,19 +236,31 @@ const RegistrarPagamento = () => {
                     </div>
                   </div>
 
-                  <Button
-                    onClick={() => handleOpenDialog(pagamento.id)}
-                    className={`w-full h-11 text-base font-bold transition-all relative overflow-hidden group/btn ${
-                      isDueOrOverdue(pagamento.data_vencimento) 
-                        ? "shadow-[0_0_15px_rgba(238,17,101,0.3)] hover:shadow-[0_0_20px_rgba(238,17,101,0.5)]" 
-                        : ""
-                    }`}
-                    variant={isDueOrOverdue(pagamento.data_vencimento) ? "default" : "outline"}
-                  >
-                     <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-[100%] group-hover/btn:animate-[shimmer_1.5s_infinite]"></span>
-                    <CheckCircle2 className="h-5 w-5 mr-2" />
-                    Registrar Pagamento
-                  </Button>
+                  {pagamento.status === "pendente" ? (
+                    <Button
+                      onClick={() => handleOpenDialog(pagamento.id)}
+                      className={`w-full h-11 text-base font-bold transition-all relative overflow-hidden group/btn ${
+                        isDueOrOverdue(pagamento.data_vencimento, pagamento.status)
+                          ? "shadow-[0_0_15px_rgba(238,17,101,0.3)] hover:shadow-[0_0_20px_rgba(238,17,101,0.5)]"
+                          : ""
+                      }`}
+                      variant={isDueOrOverdue(pagamento.data_vencimento, pagamento.status) ? "default" : "outline"}
+                    >
+                      <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-[100%] group-hover/btn:animate-[shimmer_1.5s_infinite]"></span>
+                      <CheckCircle2 className="h-5 w-5 mr-2" />
+                      Avisar que Paguei
+                    </Button>
+                  ) : (
+                    <div className="flex items-center gap-2.5 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                      <Clock className="h-4 w-4 text-blue-600 animate-pulse shrink-0" />
+                      <div>
+                        <p className="text-sm font-bold text-blue-700 dark:text-blue-400">Aguardando confirmação</p>
+                        {pagamento.forma_pagamento && (
+                          <p className="text-xs text-blue-600/70 dark:text-blue-400/70 capitalize">Via {pagamento.forma_pagamento.replace("_", " ")}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -256,13 +279,12 @@ const RegistrarPagamento = () => {
           </Card>
         )}
 
-        {/* Dialog para registrar pagamento */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Registrar Pagamento</DialogTitle>
+              <DialogTitle>Avisar que Paguei</DialogTitle>
               <DialogDescription>
-                Informe a forma de pagamento utilizada.
+                Informe como o pagamento foi realizado. A diretoria confirmará o recebimento.
               </DialogDescription>
             </DialogHeader>
 
@@ -271,7 +293,7 @@ const RegistrarPagamento = () => {
                 <Label htmlFor="forma_pagamento">Forma de Pagamento *</Label>
                 <Select value={formaPagamento} onValueChange={setFormaPagamento}>
                   <SelectTrigger id="forma_pagamento">
-                    <SelectValue placeholder="Selecione a forma de pagamento" />
+                    <SelectValue placeholder="Selecione como pagou" />
                   </SelectTrigger>
                   <SelectContent>
                     {FORMAS_PAGAMENTO.map((forma) => (
@@ -299,24 +321,24 @@ const RegistrarPagamento = () => {
               <Button
                 variant="outline"
                 onClick={handleCloseDialog}
-                disabled={registrarPagamentoMutation.isPending}
+                disabled={avisarPagamentoMutation.isPending}
               >
                 Cancelar
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={registrarPagamentoMutation.isPending}
+                disabled={avisarPagamentoMutation.isPending}
               >
-                {registrarPagamentoMutation.isPending && (
+                {avisarPagamentoMutation.isPending && (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 )}
-                Confirmar Pagamento
+                Avisar que Paguei
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        <div className="mt-8 pt-6 border-t border-primary/5 flex items-center gap-2 text-xs uppercase tracking-widest font-bold text-muted-foreground/40">
+        <div className="mt-8 pt-6 border-t border-border flex items-center gap-2 text-xs text-muted-foreground/40">
           <div className="w-2 h-2 rounded-full bg-green-500/50 animate-pulse"></div>
           Sistema de Pagamentos Seguro • Protegido por LGPD
         </div>

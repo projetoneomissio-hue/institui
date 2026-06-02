@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Helmet } from "react-helmet-async";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -196,6 +197,9 @@ export default function MatriculaOnline() {
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+            <Helmet>
+                <title>Matrícula Online | {unidade.nome}</title>
+            </Helmet>
             <div className="mb-8 text-center px-4">
                 {unidade.logo_url && (
                     <img src={unidade.logo_url} alt={unidade.nome} className="h-16 mx-auto mb-4 object-contain" />

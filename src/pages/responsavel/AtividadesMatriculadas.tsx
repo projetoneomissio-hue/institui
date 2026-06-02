@@ -68,7 +68,7 @@ const AtividadesMatriculadas = () => {
     <DashboardLayout>
       <div className="p-6 lg:p-8 space-y-8 animate-fade-in">
         <div>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">
+          <h1 className="text-2xl font-bold text-foreground">
             Minhas Atividades
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -120,7 +120,7 @@ const AtividadesMatriculadas = () => {
                     className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute bottom-4 left-4 z-20">
-                    <Badge variant="secondary" className="mb-2 backdrop-blur-sm bg-white/20 text-white border-white/20">
+                    <Badge variant="secondary" className="mb-2 bg-black/40 text-white border-white/20">
                       {atividade.turma}
                     </Badge>
                     <h3 className="text-xl font-bold text-white leading-tight">{atividade.nome}</h3>

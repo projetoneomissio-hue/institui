@@ -9,8 +9,8 @@ import { UserCheck, GraduationCap, MessageSquare, Coins, BookOpen, Info } from "
 export const ManualProfessor = () => {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="bg-gradient-to-r from-blue-500/10 to-transparent p-6 rounded-2xl border border-blue-500/20">
-        <h2 className="text-xl font-black text-blue-500 flex items-center gap-2 mb-2">
+      <div className="bg-blue-500/10 p-6 rounded-2xl border border-blue-500/20">
+        <h2 className="text-xl font-bold text-blue-500 flex items-center gap-2 mb-2">
           <BookOpen className="h-6 w-6" />
           Guia de Atividades do Professor
         </h2>

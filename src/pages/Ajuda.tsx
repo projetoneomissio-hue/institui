@@ -1,5 +1,6 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useUnidade } from "@/contexts/UnidadeContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { ManualResponsavel } from "@/components/ajuda/ManualResponsavel";
 import { ManualDirecao } from "@/components/ajuda/ManualDirecao";
@@ -10,6 +11,8 @@ import { BookOpen, HelpCircle } from "lucide-react";
 
 const Ajuda = () => {
   const { activeRole } = useUserRole();
+  const { currentUnidade } = useUnidade();
+  const unitName = currentUnidade?.nome || "Zafen";
 
   // Definição da hierarquia e visibilidade
   const tabsConfig = [
@@ -62,12 +65,12 @@ const Ajuda = () => {
       <div className="min-h-screen bg-background p-6 lg:p-8 text-foreground space-y-8 animate-in fade-in duration-500">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-black tracking-tight uppercase italic flex items-center gap-3">
+            <h1 className="text-2xl font-bold uppercase flex items-center gap-3">
               <HelpCircle className="h-8 w-8 text-primary" />
               Central de <span className="text-primary">Ajuda</span>
             </h1>
             <p className="text-muted-foreground/60 text-sm font-medium uppercase tracking-[0.2em] mt-1">
-              Manuais e Guias Rápidos · Neo Missio
+              Manuais e Guias Rápidos · {unitName}
             </p>
           </div>
         </div>
@@ -104,8 +107,8 @@ const Ajuda = () => {
             <BookOpen className="h-3 w-3 text-primary" />
             Base de Conhecimento Oficial
           </div>
-          <div className="text-[10px] font-medium tracking-widest grayscale opacity-50">
-            NEO MISSIO · GESTÃO ONG
+          <div className="text-[10px] font-medium tracking-widest grayscale opacity-50 uppercase">
+            {unitName} · GESTÃO
           </div>
         </div>
       </div>

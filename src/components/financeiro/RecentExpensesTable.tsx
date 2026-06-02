@@ -50,12 +50,12 @@ export const RecentExpensesTable = () => {
             {/* Mobile Card View */}
             <div className="md:hidden space-y-3">
                 {ultimasDespesas.map((despesa: any) => (
-                    <div key={despesa.id} className="p-4 rounded-xl border border-primary/10 bg-card/30 backdrop-blur-sm space-y-2">
+                    <div key={despesa.id} className="p-4 rounded-xl border border-border bg-card space-y-2">
                         <div className="flex justify-between items-start gap-4">
                             <h4 className="font-bold text-foreground text-sm leading-tight flex-1">
                                 {despesa.item}
                             </h4>
-                            <span className="shrink-0 text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-muted/50 px-2 py-0.5 rounded">
+                            <span className="shrink-0 text-[10px] font-medium uppercase text-muted-foreground bg-muted/50 px-2 py-0.5 rounded">
                                 {despesa.tipo}
                             </span>
                         </div>
@@ -64,7 +64,7 @@ export const RecentExpensesTable = () => {
                             <p className="text-[11px] text-muted-foreground italic font-medium">
                                 {format(new Date(despesa.data_competencia), "dd/MM/yyyy")}
                             </p>
-                            <p className="text-base font-black text-destructive">
+                            <p className="text-base font-bold text-destructive">
                                 - R$ {parseFloat(despesa.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                             </p>
                         </div>

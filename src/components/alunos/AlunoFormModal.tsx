@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { formatCPF, unmaskCPF, validateCPF } from "@/utils/cpf";
+import { formatCEP, fetchCEP } from "@/utils/cep";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -33,7 +34,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { User, Calendar, IdCard, Phone, MapPin, Loader2, Save, X, Activity, Camera } from "lucide-react";
+import { User, Calendar, IdCard, Phone, MapPin, Loader2, Save, X, Activity, Camera, Search } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 
@@ -52,6 +53,7 @@ const alunoSchema = z.object({
         { message: "CPF inválido. Verifique os dígitos." }
     ),
     telefone: z.string().trim().max(20, "Telefone muito longo").optional().nullable().or(z.literal("")),
+    bairro: z.string().trim().max(255).optional().nullable().or(z.literal("")),
     endereco: z.string().trim().max(500, "Endereço muito longo").optional().nullable().or(z.literal("")),
     responsavel_id: z.string().uuid("ID do responsável inválido").optional().nullable().or(z.literal("")),
 
@@ -96,6 +98,9 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [cep, setCep] = useState("");
+    const [cepLoading, setCepLoading] = useState(false);
+    const [cepError, setCepError] = useState<string | null>(null);
 
     const handleAvatarClick = () => {
         fileInputRef.current?.click();
@@ -120,6 +125,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
             data_nascimento: "",
             cpf: "",
             telefone: "",
+            bairro: "",
             endereco: "",
             responsavel_id: "",
             rg: "",
@@ -139,8 +145,28 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
         },
     });
 
+    const handleCepChange = async (value: string) => {
+        const formatted = formatCEP(value);
+        setCep(formatted);
+        setCepError(null);
+        const clean = formatted.replace(/\D/g, "");
+        if (clean.length === 8) {
+            setCepLoading(true);
+            const result = await fetchCEP(clean);
+            setCepLoading(false);
+            if (result) {
+                form.setValue("endereco", result.logradouro);
+                form.setValue("bairro", result.bairro);
+            } else {
+                setCepError("CEP não encontrado.");
+            }
+        }
+    };
+
     useEffect(() => {
         if (open) {
+            setCep("");
+            setCepError(null);
             if (isEditing) {
                 const anamnese = alunoToEdit.anamneses?.[0] || {};
                 setAvatarFile(null);
@@ -150,6 +176,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                     data_nascimento: alunoToEdit.data_nascimento || "",
                     cpf: alunoToEdit.cpf ? formatCPF(alunoToEdit.cpf) : "",
                     telefone: alunoToEdit.telefone || "",
+                    bairro: alunoToEdit.bairro || "",
                     endereco: alunoToEdit.endereco || "",
                     responsavel_id: alunoToEdit.responsavel_id || "",
                     rg: alunoToEdit.rg || "",
@@ -174,6 +201,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                     data_nascimento: "",
                     cpf: "",
                     telefone: "",
+                    bairro: "",
                     endereco: "",
                     responsavel_id: "",
                     rg: "",
@@ -248,6 +276,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                 data_nascimento: values.data_nascimento,
                 cpf: cleanCpf || null,
                 telefone: values.telefone || null,
+                bairro: values.bairro || null,
                 endereco: values.endereco || null,
                 responsavel_id: values.responsavel_id || null,
                 rg: values.rg || null,
@@ -318,29 +347,29 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="w-[95vw] sm:max-w-[700px] max-h-[90vh] p-0 bg-background/95 backdrop-blur-xl border border-primary/10 shadow-2xl overflow-hidden flex flex-col">
-                <div className="relative shrink-0 h-24 bg-gradient-to-r from-neomissio-primary/10 to-primary/5 flex items-center px-6 z-10 py-4">
+            <DialogContent className="w-[95vw] sm:max-w-[700px] max-h-[90vh] p-0 bg-background border border-border shadow-2xl overflow-hidden flex flex-col">
+                <div className="relative shrink-0 h-24 bg-primary/5 border-b border-border flex items-center px-6 z-10 py-4">
                     <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:16px_16px]" />
                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleAvatarChange} />
                     <div className="relative flex items-center gap-4">
                         <div
-                            className="h-16 w-16 rounded-full bg-black/20 border-2 border-white/10 flex items-center justify-center cursor-pointer overflow-hidden group shrink-0 shadow-lg relative"
+                            className="h-16 w-16 rounded-full bg-muted border-2 border-border flex items-center justify-center cursor-pointer overflow-hidden group shrink-0 shadow-lg relative"
                             onClick={handleAvatarClick}
                         >
                             {avatarPreview ? (
                                 <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover group-hover:opacity-50 transition-opacity" />
                             ) : (
-                                <User className="h-7 w-7 text-white/50 group-hover:opacity-0 transition-opacity" />
+                                <User className="h-7 w-7 text-muted-foreground group-hover:opacity-0 transition-opacity" />
                             )}
                             <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Camera className="h-6 w-6 text-white" />
                             </div>
                         </div>
                         <div>
-                            <DialogTitle className="text-2xl font-bold text-white tracking-tight">
+                            <DialogTitle className="text-2xl font-bold text-foreground tracking-tight">
                                 {isEditing ? "Editar Aluno" : "Novo Aluno"}
                             </DialogTitle>
-                            <DialogDescription className="text-white/70 text-xs mt-1">
+                            <DialogDescription className="text-muted-foreground text-xs mt-1">
                                 {isEditing
                                     ? "Atualize as informações oficiais deste registro."
                                     : "Preencha os dados necessários para o novo cadastro acadêmico."}
@@ -380,7 +409,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                             <User className="h-3 w-3" /> Nome Completo *
                                                         </FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="Digite o nome completo" {...field} className="h-11 bg-muted/20 border-white/5 focus:border-primary/30 transition-all rounded-xl shadow-inner-sm" />
+                                                            <Input placeholder="Digite o nome completo" {...field} className="h-11 bg-muted/20 border-border focus:border-primary/30 transition-all rounded-xl shadow-inner-sm" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -397,7 +426,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                                 <Calendar className="h-3 w-3" /> Nascimento *
                                                             </FormLabel>
                                                             <FormControl>
-                                                                <Input type="date" {...field} className="h-11 bg-muted/20 border-white/5 focus:border-primary/30 transition-all rounded-xl" />
+                                                                <Input type="date" {...field} className="h-11 bg-muted/20 border-border focus:border-primary/30 transition-all rounded-xl" />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
@@ -418,7 +447,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                                     {...field}
                                                                     onChange={(e) => field.onChange(formatCPF(e.target.value))}
                                                                     maxLength={14}
-                                                                    className="h-11 bg-muted/20 border-white/5 focus:border-primary/30 transition-all rounded-xl"
+                                                                    className="h-11 bg-muted/20 border-border focus:border-primary/30 transition-all rounded-xl"
                                                                 />
                                                             </FormControl>
                                                             <FormMessage />
@@ -448,7 +477,49 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                                 <Phone className="h-3 w-3" /> Telefone (Principal)
                                                             </FormLabel>
                                                             <FormControl>
-                                                                <Input placeholder="(00) 00000-0000" {...field} className="h-11 bg-muted/20 border-white/5 focus:border-primary/30 transition-all rounded-xl" />
+                                                                <Input placeholder="(00) 00000-0000" {...field} className="h-11 bg-muted/20 border-border focus:border-primary/30 transition-all rounded-xl" />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            {/* CEP com busca automática */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div className="space-y-1">
+                                                    <label className="flex items-center gap-2 text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+                                                        <MapPin className="h-3 w-3" /> CEP
+                                                    </label>
+                                                    <div className="relative">
+                                                        <Input
+                                                            placeholder="00000-000"
+                                                            value={cep}
+                                                            onChange={(e) => handleCepChange(e.target.value)}
+                                                            maxLength={9}
+                                                            className="h-11 bg-muted/20 border-border focus:border-primary/30 transition-all rounded-xl pr-10"
+                                                        />
+                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                            {cepLoading ? (
+                                                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                            ) : (
+                                                                <Search className="h-4 w-4 text-muted-foreground/40" />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    {cepError && <p className="text-xs text-destructive">{cepError}</p>}
+                                                </div>
+
+                                                <FormField
+                                                    control={form.control}
+                                                    name="bairro"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="flex items-center gap-2 text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+                                                                Bairro
+                                                            </FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="Bairro" {...field} className="h-11 bg-muted/20 border-border focus:border-primary/30 transition-all rounded-xl" />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
@@ -462,10 +533,10 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                 render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel className="flex items-center gap-2 text-muted-foreground text-xs font-semibold uppercase tracking-wider">
-                                                            <MapPin className="h-3 w-3" /> Endereço Completo
+                                                            <MapPin className="h-3 w-3" /> Rua / Endereço Completo
                                                         </FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="Rua, Número, Bairro, Cidade" {...field} className="h-11 bg-muted/20 border-white/5 focus:border-primary/30 transition-all rounded-xl" />
+                                                            <Input placeholder="Rua, Número, Complemento" {...field} className="h-11 bg-muted/20 border-border focus:border-primary/30 transition-all rounded-xl" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -496,7 +567,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                             </FormLabel>
                                                             <Select onValueChange={field.onChange} value={field.value || undefined}>
                                                                 <FormControl>
-                                                                    <SelectTrigger className="h-11 bg-muted/20 border-white/5 focus:border-primary/30 transition-all rounded-xl">
+                                                                    <SelectTrigger className="h-11 bg-muted/20 border-border focus:border-primary/30 transition-all rounded-xl">
                                                                         <SelectValue placeholder="Selecione um responsável cadastrado..." />
                                                                     </SelectTrigger>
                                                                 </FormControl>
@@ -525,7 +596,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                                 Grau de Parentesco Principal
                                                             </FormLabel>
                                                             <FormControl>
-                                                                <Input placeholder="Ex: Pai, Mãe, Avó..." {...field} className="h-11 bg-muted/20 border-white/5 focus:border-primary/30 transition-all rounded-xl" />
+                                                                <Input placeholder="Ex: Pai, Mãe, Avó..." {...field} className="h-11 bg-muted/20 border-border focus:border-primary/30 transition-all rounded-xl" />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
@@ -540,7 +611,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                                 Profissão do Reponsável
                                                             </FormLabel>
                                                             <FormControl>
-                                                                <Input placeholder="Ocupação..." {...field} className="h-11 bg-muted/20 border-white/5 focus:border-primary/30 transition-all rounded-xl" />
+                                                                <Input placeholder="Ocupação..." {...field} className="h-11 bg-muted/20 border-border focus:border-primary/30 transition-all rounded-xl" />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
@@ -567,7 +638,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                             Doc. RG/Orgão
                                                         </FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="00.000.000-0 - SSP/UF" {...field} className="h-11 bg-muted/20 border-white/5 focus:border-primary/30 transition-all rounded-xl" />
+                                                            <Input placeholder="00.000.000-0 - SSP/UF" {...field} className="h-11 bg-muted/20 border-border focus:border-primary/30 transition-all rounded-xl" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -582,7 +653,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                             Escola Regular Atual
                                                         </FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="Instituição de ensino..." {...field} className="h-11 bg-muted/20 border-white/5 focus:border-primary/30 transition-all rounded-xl" />
+                                                            <Input placeholder="Instituição de ensino..." {...field} className="h-11 bg-muted/20 border-border focus:border-primary/30 transition-all rounded-xl" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -628,7 +699,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                                         onClick={() => field.onChange(true)}
                                                                         className={`flex-1 py-3.5 px-4 rounded-xl border-2 font-bold text-sm transition-all active:scale-[0.98] ${field.value === true
                                                                             ? "border-orange-500 bg-orange-500/10 text-orange-400 shadow-lg shadow-orange-500/10"
-                                                                            : "border-white/10 bg-muted/10 text-muted-foreground hover:border-orange-500/40"
+                                                                            : "border-border bg-muted/10 text-muted-foreground hover:border-orange-500/40"
                                                                             }`}
                                                                     >
                                                                         ✔ Sim, possui
@@ -638,7 +709,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                                         onClick={() => field.onChange(false)}
                                                                         className={`flex-1 py-3.5 px-4 rounded-xl border-2 font-bold text-sm transition-all active:scale-[0.98] ${field.value === false
                                                                             ? "border-green-500 bg-green-500/10 text-green-400 shadow-lg shadow-green-500/10"
-                                                                            : "border-white/10 bg-muted/10 text-muted-foreground hover:border-green-500/40"
+                                                                            : "border-border bg-muted/10 text-muted-foreground hover:border-green-500/40"
                                                                             }`}
                                                                     >
                                                                         ✕ Não possui
@@ -691,7 +762,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                                         <FormControl>
                                                                             <Input
                                                                                 placeholder="Ex: F84.0, G40..."
-                                                                                className="h-11 bg-muted/20 border-white/5 uppercase rounded-xl"
+                                                                                className="h-11 bg-muted/20 border-border uppercase rounded-xl"
                                                                                 {...field}
                                                                             />
                                                                         </FormControl>
@@ -713,7 +784,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                                                 onClick={() => field.onChange(true)}
                                                                                 className={`flex-1 h-12 rounded-xl border-2 text-xs font-bold transition-all active:scale-95 ${field.value
                                                                                     ? "border-primary bg-primary/10 text-primary"
-                                                                                    : "border-white/10 bg-muted/10 text-muted-foreground"
+                                                                                    : "border-border bg-muted/10 text-muted-foreground"
                                                                                     }`}
                                                                             >
                                                                                 Sim
@@ -722,8 +793,8 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                                                 type="button"
                                                                                 onClick={() => field.onChange(false)}
                                                                                 className={`flex-1 h-12 rounded-xl border-2 text-xs font-bold transition-all active:scale-95 ${!field.value
-                                                                                    ? "border-white/20 bg-muted/20 text-foreground"
-                                                                                    : "border-white/10 bg-muted/10 text-muted-foreground"
+                                                                                    ? "border-border bg-muted/20 text-foreground"
+                                                                                    : "border-border bg-muted/10 text-muted-foreground"
                                                                                     }`}
                                                                             >
                                                                                 Não
@@ -753,7 +824,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                         <FormLabel className="text-xs font-semibold uppercase text-muted-foreground">Tipo Sanguíneo</FormLabel>
                                                         <Select onValueChange={field.onChange} value={field.value || undefined}>
                                                             <FormControl>
-                                                                <SelectTrigger className="h-11 bg-muted/20 border-white/5"><SelectValue placeholder="Ond/Selecione" /></SelectTrigger>
+                                                                <SelectTrigger className="h-11 bg-muted/20 border-border"><SelectValue placeholder="Ond/Selecione" /></SelectTrigger>
                                                             </FormControl>
                                                             <SelectContent>
                                                                 <SelectItem value="A+">A+</SelectItem><SelectItem value="A-">A-</SelectItem>
@@ -774,7 +845,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                     <FormItem>
                                                         <FormLabel className="text-xs font-semibold uppercase text-muted-foreground">Doenças Crônicas (Ex: Asma)</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="Detalhes (se houver)..." {...field} className="h-11 bg-muted/20 border-white/5" />
+                                                            <Input placeholder="Detalhes (se houver)..." {...field} className="h-11 bg-muted/20 border-border" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -790,7 +861,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                     <FormItem>
                                                         <FormLabel className="text-xs font-semibold uppercase text-muted-foreground">Alergias (Alimentares, Medicamentos, etc)</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="Lactose, Amendoim, Dipirona, etc..." {...field} className="h-11 bg-muted/20 border-white/5" />
+                                                            <Input placeholder="Lactose, Amendoim, Dipirona, etc..." {...field} className="h-11 bg-muted/20 border-border" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -803,7 +874,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                                     <FormItem>
                                                         <FormLabel className="text-xs font-semibold uppercase text-muted-foreground">Medicamentos em Uso Contínuo</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="Remédios controlados ou diários..." {...field} className="h-11 bg-muted/20 border-white/5" />
+                                                            <Input placeholder="Remédios controlados ou diários..." {...field} className="h-11 bg-muted/20 border-border" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -831,7 +902,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                             control={form.control}
                                             name="autoriza_imagem"
                                             render={({ field }) => (
-                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border border-white/10 p-5 bg-muted/10">
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border border-border p-5 bg-muted/10">
                                                     <div className="space-y-0.5">
                                                         <FormLabel className="text-base font-semibold">Autorização de Uso de Imagem</FormLabel>
                                                         <div className="text-xs text-muted-foreground max-w-[400px]">Concorda com o registro audiovisual do aluno em aulas/espetáculos para fins de marketing e arquivo da escola segundo contrato.</div>
@@ -847,7 +918,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                                             control={form.control}
                                             name="declaracao_assinada"
                                             render={({ field }) => (
-                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border border-white/10 p-5 bg-muted/10">
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border border-border p-5 bg-muted/10">
                                                     <div className="space-y-0.5">
                                                         <FormLabel className="text-base font-semibold">Contrato / Regulamento Assinado</FormLabel>
                                                         <div className="text-xs text-muted-foreground max-w-[400px]">O responsável entregou via física ou concordou via digitalmente com os termos do regulamento da instituição.</div>
@@ -865,7 +936,7 @@ export function AlunoFormModal({ open, onOpenChange, alunoToEdit }: AlunoFormMod
                     </Form>
                 </div>
 
-                <div className="shrink-0 p-4 sm:p-5 border-t border-primary/10 bg-muted/10 backdrop-blur-md flex justify-end gap-3 z-10">
+                <div className="shrink-0 p-4 sm:p-5 border-t border-border bg-muted/10 flex justify-end gap-3 z-10">
                     <Button
                         variant="ghost"
                         onClick={() => onOpenChange(false)}

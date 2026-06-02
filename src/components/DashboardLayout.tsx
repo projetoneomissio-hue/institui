@@ -1,5 +1,6 @@
 import { useState, useEffect, ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { cn } from "@/lib/utils";
 import {
   Home,
@@ -30,13 +31,14 @@ import {
   ChevronDown,
   Trophy,
   UserPlus,
-  Ghost,
   HelpCircle,
   MessageCircle,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUnidade } from "@/contexts/UnidadeContext";
 import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "@/components/mode-toggle";
 import { UnidadeSwitcher } from "@/components/UnidadeSwitcher";
@@ -74,7 +76,6 @@ const getNavigationByRole = (role: string) => {
           { name: "Turmas", href: "/direcao/turmas", icon: Users },
           { name: "Matrículas", href: "/direcao/matriculas", icon: FileText },
           { name: "Interessados", href: "/direcao/interessados", icon: MessageCircle },
-          { name: "Aprovar Matrículas", href: "/direcao/matriculas-pendentes", icon: ClipboardList },
         ]
       },
       {
@@ -85,8 +86,6 @@ const getNavigationByRole = (role: string) => {
           { name: "Coordenadores", href: "/direcao/coordenadores", icon: UserCog },
           { name: "Usuários", href: "/direcao/usuarios", icon: UserCog },
           { name: "Convites", href: "/convites", icon: Mail },
-          { name: "Convites Legados", href: "/secretaria/convites-legados", icon: Mail },
-          { name: "Gestão Legados", href: "/secretaria/gestao-legados", icon: Ghost },
           { name: "Pré-Cadastro", href: "/direcao/pre-cadastro", icon: UserPlus },
         ]
       },
@@ -103,6 +102,7 @@ const getNavigationByRole = (role: string) => {
         items: [
           { name: "Comunicados", href: "/direcao/comunicados", icon: Megaphone },
           { name: "Notificações", href: "/coordenacao/notificacoes", icon: AlertCircle },
+          { name: "Editor do Site", href: "/direcao/landing", icon: Globe },
         ]
       },
       {
@@ -152,7 +152,7 @@ const getNavigationByRole = (role: string) => {
       {
         group: "Gestão",
         items: [
-          { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+          { name: "Dashboard", href: "/professor/dashboard", icon: LayoutDashboard },
         ]
       },
       {
@@ -220,8 +220,6 @@ const getNavigationByRole = (role: string) => {
         items: [
           { name: "Dashboard", href: "/secretaria/dashboard", icon: LayoutDashboard },
           { name: "Cadastrar Aluno", href: "/secretaria/cadastrar-aluno", icon: UserCircle },
-          { name: "Convites Legados", href: "/secretaria/convites-legados", icon: Mail },
-          { name: "Gestão Legados", href: "/secretaria/gestao-legados", icon: Ghost },
           { name: "Pré-Cadastro", href: "/secretaria/pre-cadastro", icon: UserPlus },
           { name: "Nova Matrícula", href: "/secretaria/nova-matricula", icon: FileText },
         ]
@@ -251,7 +249,7 @@ const getBottomNavItems = (role: string) => {
       { name: "Financeiro", href: "/financeiro", icon: BarChart },
     ],
     professor: [
-      { name: "Início", href: "/dashboard", icon: LayoutDashboard },
+      { name: "Início", href: "/professor/dashboard", icon: LayoutDashboard },
       { name: "Turmas", href: "/professor/turmas", icon: Users },
       { name: "Chamada", href: "/professor/turmas", icon: FileText, search: "?mode=chamada" },
     ],
@@ -277,6 +275,7 @@ const getBottomNavItems = (role: string) => {
 const Sidebar = ({ isCollapsed, toggleCollapsed }: { isCollapsed: boolean; toggleCollapsed: () => void }) => {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { currentUnidade } = useUnidade();
   const navigate = useNavigate();
 
   const navigation = user && user.activeRole ? getNavigationByRole(user.activeRole) : [];
@@ -286,9 +285,12 @@ const Sidebar = ({ isCollapsed, toggleCollapsed }: { isCollapsed: boolean; toggl
     navigate("/login");
   };
 
+  const unitName = currentUnidade?.nome || "Zafen";
+  const unitInitial = unitName.charAt(0).toUpperCase();
+
   return (
     <div className={cn(
-      "flex h-full flex-col bg-background/20 backdrop-blur-3xl border-r border-white/10 transition-all duration-500 ease-in-out relative group",
+      "flex h-full flex-col bg-sidebar border-r border-sidebar-border transition-all duration-500 ease-in-out relative group",
       isCollapsed ? "w-20" : "w-72"
     )}>
       {/* Sidebar Pulse Indicator (Integrated) */}
@@ -300,12 +302,29 @@ const Sidebar = ({ isCollapsed, toggleCollapsed }: { isCollapsed: boolean; toggl
         isCollapsed ? "justify-center px-0" : "justify-between"
       )}>
         {!isCollapsed ? (
-          <h1 className="text-xl font-black tracking-tighter text-foreground uppercase italic group/logo cursor-default">
-            Neo <span className="text-primary group-hover/logo:drop-shadow-[0_0_8px_hsl(var(--primary))] transition-all">Missio</span>
-          </h1>
+          <div className="flex items-center gap-3 group/logo cursor-default flex-1 min-w-0">
+            {currentUnidade?.logo_url ? (
+              <img 
+                src={currentUnidade.logo_url} 
+                alt={unitName} 
+                className="h-9 w-9 object-contain rounded-lg shadow-md group-hover/logo:scale-105 transition-all flex-shrink-0"
+              />
+            ) : (
+              <div className="h-9 w-9 flex items-center justify-center rounded-lg bg-primary shadow-lg shadow-primary/20 flex-shrink-0">
+                <span className="text-white font-bold text-sm">{unitInitial}</span>
+              </div>
+            )}
+            <h1 className="text-sm font-semibold text-foreground uppercase leading-tight whitespace-nowrap overflow-hidden pr-4 flex-1">
+               {unitName}
+            </h1>
+          </div>
         ) : (
-          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/20">
-            <span className="text-white font-black italic">N</span>
+          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/20 hover:scale-110 transition-all cursor-pointer">
+            {currentUnidade?.logo_url ? (
+              <img src={currentUnidade.logo_url} alt={unitName} className="h-6 w-6 object-contain" />
+            ) : (
+              <span className="text-white font-bold">{unitInitial}</span>
+            )}
           </div>
         )}
       </div>
@@ -346,44 +365,45 @@ const Sidebar = ({ isCollapsed, toggleCollapsed }: { isCollapsed: boolean; toggl
               {navigation.map((group) => (
                 <li key={group.group}>
                   {!isCollapsed && (
-                    <h3 className="text-[11px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-3 px-2 opacity-60">
+                    <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3 px-2 opacity-60">
                       {group.group}
                     </h3>
                   )}
                   <ul className="space-y-1">
                     {group.items.map((item: any) => {
-                      const isActive = location.pathname === item.href;
+                      const isActive = location.pathname === item.href &&
+                        location.search === (item.search || "");
                       return (
                         <li key={item.name}>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Link
-                                to={item.href}
+                                to={item.href + (item.search || "")}
                                 className={cn(
                                   "group relative flex gap-x-3 rounded-xl p-2.5 transition-all duration-300",
                                   isActive
-                                    ? "bg-primary text-white shadow-[0_8px_16px_-4px_hsl(var(--primary)/0.4)]"
-                                    : "text-foreground/60 hover:bg-white/5 hover:text-foreground",
+                                    ? "bg-primary/10 text-primary dark:bg-primary dark:text-white dark:shadow-[0_8px_16px_-4px_hsl(var(--primary)/0.4)]"
+                                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
                                   isCollapsed && "justify-center p-3"
                                 )}
                               >
                                 <item.icon className={cn(
                                   "shrink-0 transition-transform duration-300 group-hover:scale-110",
                                   isCollapsed ? "h-5 w-5" : "h-4 w-4",
-                                  isActive ? "text-white" : "text-primary/70"
+                                  isActive ? "text-primary dark:text-white" : "text-primary/70"
                                 )} />
                                 {!isCollapsed && (
-                                  <span className="text-xs font-black uppercase tracking-widest truncate">
+                                  <span className="text-xs font-semibold uppercase tracking-wide truncate">
                                     {item.name}
                                   </span>
                                 )}
                                 {isActive && !isCollapsed && (
-                                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-white rounded-r-full shadow-[0_0_10px_white]" />
+                                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-primary dark:bg-white rounded-r-full dark:shadow-[0_0_10px_white]" />
                                 )}
                               </Link>
                             </TooltipTrigger>
                             {isCollapsed && (
-                              <TooltipContent side="right" className="font-black text-[10px] uppercase tracking-widest bg-primary text-white border-none">
+                              <TooltipContent side="right" className="font-semibold text-[10px] uppercase tracking-wide bg-primary text-white border-none">
                                 {item.name}
                               </TooltipContent>
                             )}
@@ -406,8 +426,8 @@ const Sidebar = ({ isCollapsed, toggleCollapsed }: { isCollapsed: boolean; toggl
                   <Link
                     to="/configuracoes"
                     className={cn(
-                      "group flex gap-x-3 rounded-xl p-2.5 text-xs font-black uppercase tracking-widest transition-all duration-300",
-                      isCollapsed ? "justify-center" : "text-foreground/60 hover:bg-white/5 hover:text-foreground"
+                      "group flex gap-x-3 rounded-xl p-2.5 text-xs font-semibold uppercase tracking-wide transition-all duration-300",
+                      isCollapsed ? "justify-center" : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                     )}
                   >
                     <Settings className={cn("shrink-0 text-primary/70", isCollapsed ? "h-5 w-5" : "h-4 w-4")} />
@@ -422,7 +442,7 @@ const Sidebar = ({ isCollapsed, toggleCollapsed }: { isCollapsed: boolean; toggl
                   <Button
                     variant="ghost"
                     className={cn(
-                      "w-full justify-start gap-x-3 rounded-xl p-2.5 text-xs font-black uppercase tracking-widest text-primary hover:bg-primary/10 hover:text-primary",
+                      "w-full justify-start gap-x-3 rounded-xl p-2.5 text-xs font-semibold uppercase tracking-wide text-primary hover:bg-primary/10 hover:text-primary",
                       isCollapsed && "justify-center"
                     )}
                     onClick={handleLogout}
@@ -457,10 +477,15 @@ const Sidebar = ({ isCollapsed, toggleCollapsed }: { isCollapsed: boolean; toggl
 };
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    const saved = localStorage.getItem("sidebar-collapsed");
+    return saved ? JSON.parse(saved) : false;
+  });
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const { user } = useAuth();
+  const { currentUnidade } = useUnidade();
+  const unitName = currentUnidade?.nome || "Zafen";
 
   // Auto-close mobile sidebar on route change
   useEffect(() => {
@@ -470,7 +495,10 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const bottomNavItems = user && user.activeRole ? getBottomNavItems(user.activeRole) : [];
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden relative">
+    <div className="flex h-screen bg-background overflow-hidden relative font-sans">
+      <Helmet>
+        <title>{unitName} | Zafen</title>
+      </Helmet>
       {/* Dynamic Background Glows */}
       <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-conhecimento/10 rounded-full blur-[100px] translate-x-1/4 translate-y-1/4 pointer-events-none" />
@@ -530,7 +558,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                   "h-5 w-5 transition-transform duration-300",
                   isActive && "scale-110 -translate-y-0.5"
                 )} />
-                <span className="text-[10px] font-black uppercase tracking-tighter truncate max-w-full px-1">
+                <span className="text-[10px] font-semibold uppercase truncate max-w-full px-1">
                   {item.name}
                 </span>
                 {isActive && (
@@ -546,7 +574,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             className="flex flex-col items-center justify-center gap-1 flex-1 h-full text-muted-foreground hover:text-foreground transition-colors"
           >
             <Menu className="h-5 w-5" />
-            <span className="text-[10px] font-black uppercase tracking-tighter">Mais</span>
+            <span className="text-[10px] font-semibold uppercase">Mais</span>
           </button>
         </div>
       </div>

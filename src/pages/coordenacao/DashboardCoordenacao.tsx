@@ -1,11 +1,11 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { GlassCard } from "@/components/dashboard/GlassCard";
+import { PanelCard } from "@/components/ui/panel-card";
+import { DashboardCard } from "@/components/DashboardCard";
 import { useQuery } from "@tanstack/react-query";
 import {
     Users,
     TrendingUp,
     Activity,
-    Calendar,
     ArrowUpRight,
     GraduationCap,
     ClipboardList,
@@ -18,8 +18,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useUnidade } from "@/contexts/UnidadeContext";
 
 const DashboardCoordenacao = () => {
+    const { currentUnidade } = useUnidade();
+    const unitName = currentUnidade?.nome || "Zafen";
+
     // Design system tokens
     const colors = {
         atividade: "#E8004F",
@@ -67,189 +71,173 @@ const DashboardCoordenacao = () => {
         <DashboardLayout>
             <div className="min-h-screen bg-background p-6 lg:p-8 text-foreground space-y-8">
                 {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
-                        <h1 className="text-3xl font-black tracking-tight uppercase italic">
-                            Dashboard <span className="text-primary italic">Coordenação</span>
-                        </h1>
-                        <p className="text-muted-foreground/60 text-sm font-medium uppercase tracking-[0.2em] mt-1">
-                            Gestão Operacional · Neo Missio
-                        </p>
-                    </div>
+                <div>
+                    <h1 className="text-2xl font-bold text-foreground">
+                        Dashboard <span className="text-primary">Coordenação</span>
+                    </h1>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                        Gestão Operacional · {unitName}
+                    </p>
                 </div>
 
                 {/* KPI Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <GlassCard
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <DashboardCard
                         title="Total de Alunos"
-                        value={totalAlunosAtivos?.toString() || "0"}
-                        icon={<Users className="h-5 w-5" />}
+                        value={totalAlunosAtivos}
+                        icon={Users}
                         description={`${totalCadastrados} cadastros totais`}
-                        trend={{ value: 0, isPositive: true }}
-                        color={colors.escuta}
+                        variant="alunos"
                         isLoading={loadingTodosAlunos}
                     />
-                    <GlassCard
+                    <DashboardCard
                         title="Turmas Ativas"
-                        value={turmas?.length?.toString() || "0"}
-                        icon={<GraduationCap className="h-5 w-5" />}
+                        value={turmas?.length ?? 0}
+                        icon={GraduationCap}
                         description="em andamento este mês"
-                        color={colors.conhecimento}
+                        variant="atividades"
                         isLoading={loadingTurmas}
                     />
-                    <GlassCard
+                    <DashboardCard
                         title="Matrículas Pendentes"
-                        value={matriculasPendentes?.length?.toString() || "0"}
-                        icon={<ClipboardList className="h-5 w-5" />}
+                        value={matriculasPendentes?.length ?? 0}
+                        icon={ClipboardList}
                         description="aguardando aprovação"
-                        color={colors.conversa}
+                        variant="ocupacao"
                         isLoading={loadingPendentes}
                     />
-                    <GlassCard
+                    <DashboardCard
                         title="Ocupação Geral"
                         value={`${ocupacaoPercent.toFixed(1)}%`}
-                        icon={<TrendingUp className="h-5 w-5" />}
+                        icon={TrendingUp}
                         description={`${totalMatriculados}/${totalCapacidade} vagas preenchidas`}
-                        trend={{ value: 0, isPositive: true }}
-                        color={colors.atividade}
+                        variant="default"
                         isLoading={loadingTurmas}
                     />
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     {/* Funil Visual */}
-                    <GlassCard
+                    <PanelCard
                         title="Funil de Alunos"
                         description="Conversão da Base"
-                        color={colors.conhecimento}
                         icon={<Filter className="h-4 w-4" />}
+                        accent="violet"
                     >
-                        <div className="flex flex-col gap-6 mt-6">
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[11px] font-black uppercase tracking-wider text-muted-foreground">
+                        <div className="flex flex-col gap-5">
+                            <div className="space-y-1.5">
+                                <div className="flex justify-between text-xs font-semibold text-muted-foreground">
                                     <span>Cadastrados</span>
-                                    <span className="text-foreground">{totalCadastrados}</span>
+                                    <span className="text-foreground font-bold">{totalCadastrados}</span>
                                 </div>
-                                <div className="h-4 w-full bg-foreground/5 rounded-full overflow-hidden">
-                                    <div className="h-full bg-foreground/20 rounded-full" style={{ width: '100%' }} />
+                                <div className="h-3 w-full bg-border rounded-full overflow-hidden">
+                                    <div className="h-full bg-foreground/25 rounded-full" style={{ width: "100%" }} />
                                 </div>
                             </div>
-
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[11px] font-black uppercase tracking-wider text-muted-foreground">
+                            <div className="space-y-1.5">
+                                <div className="flex justify-between text-xs font-semibold text-muted-foreground">
                                     <span>Matrícula Solicitada</span>
-                                    <span className="text-foreground">{totalCadastrados - alunosOrfaos.length}</span>
+                                    <span className="text-foreground font-bold">{totalCadastrados - alunosOrfaos.length}</span>
                                 </div>
-                                <div className="h-4 w-full bg-foreground/5 rounded-full overflow-hidden">
-                                    <div className="h-full rounded-full" style={{ width: `${totalCadastrados ? ((totalCadastrados - alunosOrfaos.length) / totalCadastrados) * 100 : 0}%`, backgroundColor: colors.conversa }} />
+                                <div className="h-3 w-full bg-border rounded-full overflow-hidden">
+                                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${totalCadastrados ? ((totalCadastrados - alunosOrfaos.length) / totalCadastrados) * 100 : 0}%`, backgroundColor: colors.conversa }} />
                                 </div>
                             </div>
-
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[11px] font-black uppercase tracking-wider text-muted-foreground">
+                            <div className="space-y-1.5">
+                                <div className="flex justify-between text-xs font-semibold text-muted-foreground">
                                     <span>Ativos (Aprovados)</span>
-                                    <span style={{ color: colors.escuta }}>{totalAlunosAtivos}</span>
+                                    <span className="font-bold" style={{ color: colors.escuta }}>{totalAlunosAtivos}</span>
                                 </div>
-                                <div className="h-4 w-full bg-foreground/5 rounded-full overflow-hidden">
-                                    <div className="h-full rounded-full" style={{ width: `${totalCadastrados ? (totalAlunosAtivos / totalCadastrados) * 100 : 0}%`, backgroundColor: colors.escuta, boxShadow: `0 0 10px ${colors.escuta}88` }} />
+                                <div className="h-3 w-full bg-border rounded-full overflow-hidden">
+                                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${totalCadastrados ? (totalAlunosAtivos / totalCadastrados) * 100 : 0}%`, backgroundColor: colors.escuta }} />
                                 </div>
                             </div>
                         </div>
-                    </GlassCard>
+                    </PanelCard>
 
-                    {/* Funil de Pendências */}
-                    <GlassCard
+                    {/* Aprovação de Matrículas */}
+                    <PanelCard
                         title="Aprovação de Matrículas"
-                        color={colors.conversa}
                         icon={<Activity className="h-4 w-4" />}
+                        accent="amber"
+                        action={matriculasPendentes && matriculasPendentes.length > 0 ? (
+                            <Badge className="bg-primary/10 text-primary border-0 text-[10px] font-semibold px-2">
+                                {matriculasPendentes.length} novas
+                            </Badge>
+                        ) : undefined}
                     >
-                        <div className="flex items-center justify-between mb-4 mt-1">
-                            <span className="text-[9px] text-muted-foreground font-black uppercase tracking-[0.1em]">Aprovação Necessária</span>
-                            {matriculasPendentes && matriculasPendentes.length > 0 && (
-                                <Badge className="bg-primary/10 text-primary border-0 text-[9px] font-black px-2 py-0.5">
-                                    {matriculasPendentes.length} NOVAS
-                                </Badge>
-                            )}
-                        </div>
-                        <ScrollArea className="h-[300px] pr-4">
+                        <ScrollArea className="h-[300px] pr-3">
                             {loadingPendentes ? (
-                                <div className="flex items-center justify-center h-full opacity-40">CARREGANDO...</div>
+                                <div className="flex items-center justify-center h-full opacity-40 text-xs">Carregando...</div>
                             ) : matriculasPendentes && matriculasPendentes.length > 0 ? (
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     {matriculasPendentes.map((m: any) => (
-                                        <div key={m.id} className="group p-3 rounded-xl bg-background/40 border border-white/5 hover:border-primary/30 transition-all flex items-center justify-between shadow-sm">
+                                        <div key={m.id} className="group p-3 rounded-lg bg-background border border-border hover:border-primary/30 transition-colors flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                <div className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center font-black text-[10px] text-primary uppercase">
+                                                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center font-bold text-xs text-primary">
                                                     {m.aluno?.nome_completo?.[0] || "?"}
                                                 </div>
                                                 <div>
-                                                    <div className="text-[11px] font-bold tracking-tight">{m.aluno?.nome_completo}</div>
-                                                    <div className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">
-                                                        {m.turma?.atividade?.nome || "Atividade"}
-                                                    </div>
+                                                    <div className="text-xs font-semibold">{m.aluno?.nome_completo}</div>
+                                                    <div className="text-[10px] text-muted-foreground">{m.turma?.atividade?.nome || "Atividade"}</div>
                                                 </div>
                                             </div>
-                                            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <ArrowUpRight className="h-4 w-4" />
+                                            <Button size="icon" variant="ghost" className="h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <ArrowUpRight className="h-3 w-3" />
                                             </Button>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
-                                <div className="flex flex-col items-center justify-center h-full opacity-40">
-                                    <ClipboardList className="h-8 w-8 mb-2" />
-                                    <span className="text-[10px] uppercase font-black">Nenhuma pendência</span>
+                                <div className="flex flex-col items-center justify-center h-full opacity-30">
+                                    <ClipboardList className="h-7 w-7 mb-2" />
+                                    <span className="text-xs font-medium">Nenhuma pendência</span>
                                 </div>
                             )}
                         </ScrollArea>
-                    </GlassCard>
+                    </PanelCard>
 
-                    {/* Taxa de Ocupação por Turma */}
-                    <GlassCard
+                    {/* Ocupação por Turma */}
+                    <PanelCard
                         title="Ocupação por Turma"
-                        color={colors.escuta}
                         icon={<TrendingUp className="h-4 w-4" />}
+                        accent="teal"
                     >
-                        <ScrollArea className="h-[300px] pr-4 mt-4">
-                            <div className="space-y-5">
+                        <ScrollArea className="h-[300px] pr-3">
+                            <div className="space-y-4">
                                 {loadingTurmas ? (
-                                    <div className="flex items-center justify-center h-full opacity-20">CARREGANDO...</div>
+                                    <div className="flex items-center justify-center h-full opacity-30 text-xs">Carregando...</div>
                                 ) : turmas && turmas.length > 0 ? (
                                     turmas.map((turma: any) => {
                                         const mCount = turma.matriculas?.[0]?.count || 0;
                                         const pct = turma.capacidade_maxima > 0 ? (mCount / turma.capacidade_maxima) * 100 : 0;
                                         return (
-                                            <div key={turma.id} className="space-y-2">
-                                                <div className="flex justify-between text-[10px] font-black uppercase tracking-tighter">
-                                                    <span className="text-foreground/70 truncate">{turma.nome}</span>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-muted-foreground/60">{mCount}/{turma.capacidade_maxima}</span>
-                                                        <span className="text-primary">{pct.toFixed(0)}%</span>
+                                            <div key={turma.id} className="space-y-1.5">
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-foreground/80 truncate font-medium">{turma.nome}</span>
+                                                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                                        <span className="text-muted-foreground">{mCount}/{turma.capacidade_maxima}</span>
+                                                        <span className="font-semibold text-primary">{pct.toFixed(0)}%</span>
                                                     </div>
                                                 </div>
-                                                <div className="h-1.5 w-full bg-foreground/5 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-primary rounded-full transition-all duration-1000"
-                                                        style={{ width: `${pct}%` }}
-                                                    />
+                                                <div className="h-1.5 w-full bg-border rounded-full overflow-hidden">
+                                                    <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
                                                 </div>
                                             </div>
                                         );
                                     })
                                 ) : (
-                                    <span className="text-[10px] uppercase font-black opacity-40">Sem turmas registradas</span>
+                                    <span className="text-xs text-muted-foreground">Sem turmas registradas</span>
                                 )}
                             </div>
                         </ScrollArea>
-                    </GlassCard>
+                    </PanelCard>
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-between items-center pt-8 border-t border-border/50 opacity-50">
-                    <div className="flex items-center gap-2 text-[10px] uppercase font-bold tracking-[0.2em]">
-                        <Activity className="h-3 w-3 text-green-400" />
-                        Sistema Ativo · Tempo Real
-                    </div>
+                <div className="flex items-center gap-2 pt-6 border-t border-border text-xs text-muted-foreground">
+                    <Activity className="h-3 w-3 text-emerald-500" />
+                    Dados em tempo real via Supabase
                 </div>
             </div>
         </DashboardLayout>

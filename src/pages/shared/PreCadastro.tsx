@@ -12,6 +12,7 @@ import { Loader2, UserPlus, Mail, Copy, CheckCircle2, AlertCircle, Plus, Trash2,
 import { formatCPF, unmaskCPF, validateCPF } from "@/utils/cpf";
 import { alunosService } from "@/services/alunos.service";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useUnidade } from "@/contexts/UnidadeContext";
 import {
   Dialog,
   DialogContent,
@@ -257,7 +258,7 @@ export default function PreCadastro() {
                   Novo Pré-Cadastro
                 </Button>
                 <Button className="flex-1" asChild>
-                  <a href={`mailto:${responsavel.email}?subject=Convite de Acesso - Neo Missio&body=Olá ${responsavel.nome}, aqui está seu link de acesso: ${invitationData.link}`}>
+                  <a href={`mailto:${responsavel.email}?subject=Convite de Acesso - ${currentUnidade?.nome || 'Zafen'}&body=Olá ${responsavel.nome}, aqui está seu link de acesso: ${invitationData.link}`}>
                     <Mail className="mr-2 h-4 w-4" />
                     Enviar por Email
                   </a>

@@ -20,7 +20,8 @@ import {
   Clock,
   Megaphone,
   Edit2,
-  Camera
+  Camera,
+  Search
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format, isBefore, addDays } from "date-fns";
@@ -35,6 +36,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { formatCPF, unmaskCPF, validateCPF } from "@/utils/cpf";
+import { formatCEP, fetchCEP } from "@/utils/cep";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2 } from "lucide-react";
@@ -75,6 +77,26 @@ const DashboardResponsavel = () => {
   });
   const [cpfError, setCpfError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [cep, setCep] = useState("");
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepError, setCepError] = useState<string | null>(null);
+
+  const handleCepChange = async (value: string) => {
+    const formatted = formatCEP(value);
+    setCep(formatted);
+    setCepError(null);
+    const clean = formatted.replace(/\D/g, "");
+    if (clean.length === 8) {
+      setCepLoading(true);
+      const result = await fetchCEP(clean);
+      setCepLoading(false);
+      if (result) {
+        setFormData(prev => ({ ...prev, endereco: result.logradouro, bairro: result.bairro }));
+      } else {
+        setCepError("CEP não encontrado.");
+      }
+    }
+  };
 
   const handleCpfChange = (value: string) => {
     const formatted = formatCPF(value);
@@ -171,9 +193,11 @@ const DashboardResponsavel = () => {
 
           setIsDialogOpen(false);
           setEditingAluno(null);
+          setCep("");
+          setCepError(null);
           setFormData({
             nome: "", data_nascimento: "", cpf: "", telefone: "", endereco: "",
-            alergias: "", medicamentos: "", observacoes: "", foto_url: null,
+            bairro: "", alergias: "", medicamentos: "", observacoes: "", foto_url: null,
             tipoSanguineo: "", isPne: false, pneCid: "", temLaudo: false,
             laudoUrl: "", contatoEmergenciaNome: "", contatoEmergenciaTelefone: "",
             contatoEmergenciaRelacao: "", doenca_cronica: ""
@@ -227,11 +251,28 @@ const DashboardResponsavel = () => {
     enabled: !!user,
   });
 
-  // Fetch pagamentos pendentes
+  // Fetch pagamentos pendentes — 3 passos pois Supabase não suporta filtro em 3 níveis de join
   const { data: pagamentos, isLoading: loadingPagamentos } = useQuery({
     queryKey: ["dashboard-pagamentos", user?.id],
     queryFn: async () => {
       if (!user) return [];
+
+      const { data: alunosData } = await supabase
+        .from("alunos")
+        .select("id")
+        .eq("responsavel_id", user.id);
+
+      if (!alunosData?.length) return [];
+      const alunoIds = alunosData.map(a => a.id);
+
+      const { data: matriculasData } = await supabase
+        .from("matriculas")
+        .select("id")
+        .in("aluno_id", alunoIds);
+
+      if (!matriculasData?.length) return [];
+      const matriculaIds = matriculasData.map(m => m.id);
+
       const { data, error } = await supabase
         .from("pagamentos")
         .select(`
@@ -239,15 +280,16 @@ const DashboardResponsavel = () => {
           valor,
           data_vencimento,
           status,
-          matricula:matriculas!inner(
-            aluno:alunos!inner(nome_completo, responsavel_id),
+          matricula:matriculas(
+            aluno:alunos(nome_completo),
             turma:turmas(atividade:atividades(nome))
           )
         `)
-        .eq("matriculas.alunos.responsavel_id", user.id)
+        .in("matricula_id", matriculaIds)
         .eq("status", "pendente")
         .order("data_vencimento", { ascending: true })
         .limit(5);
+
       if (error) throw error;
       return data || [];
     },
@@ -288,13 +330,9 @@ const DashboardResponsavel = () => {
     );
   }
 
-  // Show Onboarding if no students found
+  // Show Onboarding fullscreen (no sidebar) if no students found
   if (alunos && alunos.length === 0) {
-    return (
-      <DashboardLayout>
-        <OnboardingResponsavel />
-      </DashboardLayout>
-    );
+    return <OnboardingResponsavel />;
   }
 
   return (
@@ -316,24 +354,28 @@ const DashboardResponsavel = () => {
             value={totalAlunos}
             icon={Users}
             description="Total de dependentes"
+            variant="alunos"
           />
           <DashboardCard
             title="Matrículas Ativas"
             value={matriculasAtivas}
             icon={CheckCircle2}
             description="Inscrições aprovadas"
+            variant="atividades"
           />
           <DashboardCard
             title="Matrículas Pendentes"
             value={matriculasPendentes}
             icon={Clock}
             description="Aguardando aprovação"
+            variant="ocupacao"
           />
           <DashboardCard
             title="Pagamentos Pendentes"
             value={totalPagamentosPendentes}
             icon={DollarSign}
             description="A vencer ou vencidos"
+            variant="financeiro"
           />
         </div>
 
@@ -372,7 +414,7 @@ const DashboardResponsavel = () => {
 
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Meus Alunos */}
-          <Card className="border-t-4 border-t-primary/80 lg:col-span-2 overflow-hidden bg-background/50 backdrop-blur-xl shadow-lg border-primary/10">
+          <Card className="border-t-4 border-t-primary/80 lg:col-span-2 overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between bg-primary/5 pb-6">
               <div>
                 <CardTitle className="text-xl flex items-center gap-2 text-primary">
@@ -397,7 +439,7 @@ const DashboardResponsavel = () => {
               {alunos && alunos.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {alunos.map((aluno) => (
-                    <div key={aluno.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/50 dark:bg-slate-900/50 border border-border/50 hover:border-primary/30 transition-all hover:shadow-md group">
+                    <div key={aluno.id} className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/50 hover:border-primary/30 transition-all hover:shadow-md group">
                       <div className="flex items-center gap-4">
                         <Avatar className="h-14 w-14 border-2 border-primary/20 group-hover:border-primary transition-colors">
                           {aluno.foto_url ? (
@@ -426,6 +468,8 @@ const DashboardResponsavel = () => {
                           onClick={() => {
                             const anamnese = aluno.anamneses?.[0] || {};
                             setEditingAluno(aluno);
+                            setCep("");
+                            setCepError(null);
                             setFormData({
                               nome: aluno.nome_completo,
                               data_nascimento: aluno.data_nascimento,
@@ -466,7 +510,7 @@ const DashboardResponsavel = () => {
           </Card>
 
           {/* Matrículas Recentes */}
-          <Card className="shadow-md border-t-4 border-t-primary/50 flex flex-col h-full bg-background/50 backdrop-blur-xl">
+          <Card className="shadow-md border-t-4 border-t-primary/50 flex flex-col h-full">
             <CardHeader className="flex flex-row items-center justify-between bg-muted/20 border-b pb-4">
               <CardTitle className="text-lg flex items-center gap-2">
                 <div className="p-1.5 bg-primary/10 rounded-lg">
@@ -510,7 +554,7 @@ const DashboardResponsavel = () => {
           </Card>
 
           {/* Próximos Pagamentos */}
-          <Card className="shadow-md border-t-4 border-t-destructive/50 flex flex-col h-full bg-background/50 backdrop-blur-xl">
+          <Card className="shadow-md border-t-4 border-t-destructive/50 flex flex-col h-full">
             <CardHeader className="flex flex-row items-center justify-between bg-muted/20 border-b pb-4">
               <CardTitle className="text-lg flex items-center gap-2">
                 <div className="p-1.5 bg-destructive/10 rounded-lg">
@@ -653,6 +697,27 @@ const DashboardResponsavel = () => {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label htmlFor="cep-edit">CEP</Label>
+                  <div className="relative">
+                    <Input
+                      id="cep-edit"
+                      value={cep}
+                      onChange={(e) => handleCepChange(e.target.value)}
+                      placeholder="00000-000"
+                      maxLength={9}
+                      className="pr-10"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {cepLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      ) : (
+                        <Search className="h-4 w-4 text-muted-foreground/40" />
+                      )}
+                    </div>
+                  </div>
+                  {cepError && <p className="text-xs text-destructive">{cepError}</p>}
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="bairro">Bairro</Label>
                   <Input
                     id="bairro"
@@ -661,15 +726,15 @@ const DashboardResponsavel = () => {
                     placeholder="Bairro"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="endereco">Endereço Completo</Label>
-                  <Input
-                    id="endereco"
-                    value={formData.endereco}
-                    onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
-                    placeholder="Rua, número"
-                  />
-                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endereco">Rua / Endereço Completo</Label>
+                <Input
+                  id="endereco"
+                  value={formData.endereco}
+                  onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
+                  placeholder="Rua, número, complemento"
+                />
               </div>
 
 
@@ -697,7 +762,7 @@ const DashboardResponsavel = () => {
                     </Select>
                   </div>
                   <div className="md:col-span-2 space-y-2 border-l border-muted pl-4">
-                    <p className="text-[9px] text-muted-foreground uppercase font-bold tracking-widest">Dica de Segurança</p>
+                    <p className="text-[9px] text-muted-foreground uppercase font-medium">Dica de Segurança</p>
                     <p className="text-[10px] leading-tight text-muted-foreground">O tipo sanguíneo ajuda a equipe médica em casos de emergência.</p>
                   </div>
                 </div>
@@ -732,7 +797,7 @@ const DashboardResponsavel = () => {
                   {formData.isPne && (
                     <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
                       <div className="space-y-1.5">
-                        <Label htmlFor="pneCid" className="text-[10px] uppercase font-bold text-muted-foreground">CID (Se houver)</Label>
+                        <Label htmlFor="pneCid" className="text-xs text-muted-foreground">CID (Se houver)</Label>
                         <Input
                           id="pneCid"
                           value={formData.pneCid}
@@ -742,7 +807,7 @@ const DashboardResponsavel = () => {
                         />
                       </div>
                       <div className="flex items-center gap-2">
-                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Tem Laudo?</Label>
+                        <Label className="text-xs text-muted-foreground">Tem Laudo?</Label>
                         <div className="flex gap-2 ml-auto">
                           {["Sim", "Não"].map((opt) => (
                             <button
@@ -780,7 +845,7 @@ const DashboardResponsavel = () => {
                     </div>
                   )}
 
-                  <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider font-bold text-muted-foreground/60">
+                  <div className="flex items-center gap-1.5 text-[9px] uppercase text-muted-foreground/60">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                     Dados Protegidos por LGPD
                   </div>
@@ -826,7 +891,7 @@ const DashboardResponsavel = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 rounded-xl border border-dashed border-neomissio-primary/30 bg-neomissio-primary/5">
                   <div className="space-y-1.5">
-                    <Label htmlFor="contatoEmergenciaNome" className="text-[10px] uppercase font-bold text-muted-foreground">Nome</Label>
+                    <Label htmlFor="contatoEmergenciaNome" className="text-xs text-muted-foreground">Nome</Label>
                     <Input
                       id="contatoEmergenciaNome"
                       value={formData.contatoEmergenciaNome}
@@ -835,7 +900,7 @@ const DashboardResponsavel = () => {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="contatoEmergenciaTelefone" className="text-[10px] uppercase font-bold text-muted-foreground">Telefone</Label>
+                    <Label htmlFor="contatoEmergenciaTelefone" className="text-xs text-muted-foreground">Telefone</Label>
                     <Input
                       id="contatoEmergenciaTelefone"
                       value={formData.contatoEmergenciaTelefone}
@@ -844,7 +909,7 @@ const DashboardResponsavel = () => {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="contatoEmergenciaRelacao" className="text-[10px] uppercase font-bold text-muted-foreground">Parentesco</Label>
+                    <Label htmlFor="contatoEmergenciaRelacao" className="text-xs text-muted-foreground">Parentesco</Label>
                     <Input
                       id="contatoEmergenciaRelacao"
                       value={formData.contatoEmergenciaRelacao}
@@ -975,7 +1040,7 @@ const MuralAvisos = () => {
                 <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
                   <Megaphone className="h-4 w-4 text-primary" />
                 </div>
-                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center">
+                <div className="text-[10px] text-muted-foreground text-center">
                   {format(new Date(comunicado.created_at), "dd MMM", { locale: ptBR })}
                 </div>
               </div>

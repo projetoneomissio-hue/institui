@@ -15,7 +15,7 @@ export const TestimonialsSection = ({ testimonials }: TestimonialsSectionProps) 
                     <Badge variant="outline" className="w-fit mx-auto mb-4">Depoimentos</Badge>
                     <h2 className="text-4xl font-bold mb-4">O que Dizem Sobre Nós</h2>
                     <p className="text-muted-foreground max-w-2xl mx-auto">
-                        Veja o impacto que o Neo Missio tem na vida das pessoas da nossa comunidade.
+                        Veja o impacto que a instituição tem na vida das pessoas da nossa comunidade.
                     </p>
                 </div>
 

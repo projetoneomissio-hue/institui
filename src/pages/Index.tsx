@@ -1,38 +1,85 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Heart, Users, CheckCircle2, Star, MessageSquare, ChevronRight, Sparkles, Shield, Zap, Trophy } from "lucide-react";
+import { ArrowRight, Heart, Users, Trophy, Sparkles, Star, GraduationCap } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import { SeoHead } from "@/components/SeoHead";
 import { useUTMTracking } from "@/hooks/useUTMTracking";
 import { useAuth } from "@/contexts/AuthContext";
-import { activities, testimonials } from "@/data/landing-data";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { activities, testimonials, getIconByName, ActivityItem } from "@/data/landing-data";
 import { ActivitiesSection } from "@/components/landing/ActivitiesSection";
 import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
 import { TherapySection } from "@/components/landing/TherapySection";
 import { LandingFooter } from "@/components/landing/LandingFooter";
+import { useUnidade } from "@/contexts/UnidadeContext";
 
-import logoNeoMissio from "@/assets/logo-neo-missio.png";
 import heroImage from "@/assets/hero-neo-missio.jpg";
 
 const Index = () => {
   useUTMTracking();
   const { isAuthenticated } = useAuth();
+  const { currentUnidade } = useUnidade();
+  const unitName = currentUnidade?.nome || "Neo Missio";
+
+  // Lê atividades do Supabase; se a tabela não existir ou estiver vazia, usa as estáticas
+  const { data: dbAtividades } = useQuery({
+    queryKey: ["landing-atividades"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("landing_atividades" as any)
+        .select("*")
+        .eq("ativo", true)
+        .order("ordem", { ascending: true });
+      if (error) return null;
+      return data as any[];
+    },
+  });
+
+  const displayActivities: ActivityItem[] = dbAtividades?.length
+    ? dbAtividades.map((a: any) => ({
+        id: a.id,
+        title: a.titulo,
+        description: a.descricao || "",
+        price: a.preco || "",
+        priceNote: a.preco_nota || undefined,
+        frequency: a.frequencia || "",
+        schedule: a.horario || "",
+        targetAudience: a.publico_alvo || "",
+        note: a.nota || undefined,
+        image: a.imagem_url || "",
+        icon: getIconByName(a.icone),
+        gradient: a.gradiente || "from-blue-500 to-cyan-500",
+        waitlist: a.lista_espera || false,
+        free: a.gratuito || false,
+      }))
+    : activities;
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
 
+  // A landing page é sempre em modo claro independente do tema do admin
   return (
-    <div className="min-h-screen bg-background">
+    <div className="light min-h-screen bg-white text-gray-900">
       <SeoHead
         title="Atividades Extracurriculares"
-        description="Ballet, Jiu-Jitsu, Música, Inglês e muito mais. Transformando vidas através da educação, esporte e cultura em Curitiba."
+        description={`Gerenciamento completo para ${unitName}. Atividades, financeiro e portal do responsável.`}
       />
 
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-background/95 backdrop-blur-sm border-b border-border z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <img src={logoNeoMissio} alt="Neo Missio" className="h-10 sm:h-12 w-auto" />
+          <div className="flex items-center gap-2">
+             {currentUnidade?.logo_url ? (
+               <img src={currentUnidade.logo_url} alt={unitName} className="h-10 sm:h-12 w-auto object-contain" />
+             ) : (
+               <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                 <span className="text-xl font-black text-primary">{unitName.charAt(0)}</span>
+               </div>
+             )}
+             <span className="font-black text-xl tracking-tighter uppercase">{unitName}</span>
+          </div>
           <div className="flex gap-4 items-center">
             <a href="#atividades" className="hidden sm:inline text-sm font-medium hover:text-primary transition-colors">
               Atividades
@@ -56,54 +103,88 @@ const Index = () => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
-              <Badge className="w-fit" variant="secondary">
-                Centro Social Comunitário
+              <Badge className="w-fit gap-1.5" variant="secondary">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse inline-block" />
+                Inscrições Abertas
               </Badge>
               <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold leading-tight">
-                Atividades 2026
-                <span className="text-primary"> - Inscreva-se!</span>
+                Esporte, arte e educação para
+                <span className="text-primary"> toda a comunidade</span>
               </h1>
               <p className="text-lg text-muted-foreground">
-                Confira nossas atividades e se inscreva! Algumas atividades estarão em lista de espera.
-                Após a inscrição, nos chame no WhatsApp para darmos continuidade na sua matrícula.
+                O {unitName} oferece atividades acessíveis para crianças, jovens e adultos.
+                Vagas limitadas — garanta a sua e transforme sua história.
               </p>
-              <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mt-4">
-                <p className="text-sm font-semibold">
-                  Taxa de matrícula: <span className="text-primary text-lg">R$ 25,00</span>
-                </p>
+
+              {/* Social proof strip */}
+              <div className="flex flex-wrap gap-6 pt-2">
+                {[
+                  { icon: Users, value: "300+", label: "alunos atendidos" },
+                  { icon: Trophy, value: "11", label: "modalidades" },
+                  { icon: Star, value: "5★", label: "avaliação" },
+                ].map(({ icon: Icon, value, label }) => (
+                  <div key={label} className="flex items-center gap-2">
+                    <Icon className="h-4 w-4 text-primary" />
+                    <span className="font-black text-foreground">{value}</span>
+                    <span className="text-sm text-muted-foreground">{label}</span>
+                  </div>
+                ))}
               </div>
+
               <div className="flex flex-wrap gap-4">
                 <a href="#atividades">
-                  <Button size="lg" className="gap-2">
-                    Conheça as Atividades
+                  <Button size="lg" className="gap-2 shadow-lg shadow-primary/20">
+                    Ver Atividades
                     <ArrowRight className="h-5 w-5" />
                   </Button>
                 </a>
-                <a href="#terapia">
+                <a href="https://wa.me/5541984406992" target="_blank" rel="noopener noreferrer">
                   <Button size="lg" variant="outline" className="gap-2">
-                    Aconselhamento Terapêutico
+                    Tirar dúvidas no WhatsApp
                   </Button>
                 </a>
               </div>
             </div>
+
             <div className="relative">
               <div className="aspect-video rounded-2xl overflow-hidden shadow-2xl border border-border">
                 <img
                   src={heroImage}
-                  alt="Crianças e adultos em atividades do Centro Social Neo Missio"
+                  alt={`Crianças e adultos em atividades da unidade ${unitName}`}
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className="absolute -bottom-6 -left-6 bg-primary text-primary-foreground p-6 rounded-xl shadow-lg">
+              {/* Floating badge */}
+              <div className="absolute -bottom-6 -left-6 bg-primary text-primary-foreground p-5 rounded-2xl shadow-xl shadow-primary/30">
                 <div className="flex items-center gap-3">
-                  <Heart className="h-8 w-8" />
+                  <Heart className="h-7 w-7 shrink-0" />
                   <div>
-                    <p className="text-2xl font-bold">11</p>
-                    <p className="text-sm">Atividades Disponíveis</p>
+                    <p className="text-2xl font-black leading-none">Gratuito</p>
+                    <p className="text-xs opacity-80 mt-0.5">Aconselhamento para famílias</p>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Impact Numbers Section */}
+      <section className="py-16 bg-primary text-primary-foreground">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            {[
+              { icon: Users, value: "300+", label: "Alunos Atendidos" },
+              { icon: GraduationCap, value: "11", label: "Modalidades Ativas" },
+              { icon: Heart, value: "2", label: "Grupos de Aconselhamento" },
+              { icon: Sparkles, value: "100%", label: "Foco em Propósito" },
+            ].map(({ icon: Icon, value, label }) => (
+              <div key={label} className="space-y-2">
+                <Icon className="h-8 w-8 mx-auto opacity-80" />
+                <p className="text-4xl font-black">{value}</p>
+                <p className="text-sm opacity-75 font-medium uppercase tracking-wider">{label}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -114,40 +195,39 @@ const Index = () => {
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <Badge variant="outline" className="w-fit mx-auto">Sobre o Projeto</Badge>
             <h2 className="text-4xl font-bold">
-              Missão de Transformação Social
+              Acreditamos que toda criança merece uma chance
             </h2>
             <p className="text-lg text-muted-foreground">
-              O Centro Social Neo Missio nasceu com o propósito de oferecer oportunidades de desenvolvimento
-              para comunidades em situação de vulnerabilidade. Através de atividades esportivas, educacionais
-              e terapêuticas, promovemos inclusão social, saúde física e mental, e construção de valores como
-              disciplina, respeito e trabalho em equipe.
+              O {unitName} nasceu para levar esporte, arte e educação a quem mais precisa.
+              Aqui, não importa de onde você vem — importa para onde você quer ir.
+              Nossos professores são voluntários apaixonados pelo que fazem, e cada matrícula financia a continuidade desse trabalho.
             </p>
             <div className="grid md:grid-cols-3 gap-8 pt-8">
-              <div className="space-y-2">
-                <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
+              <div className="space-y-3 p-6 rounded-2xl bg-background border border-border/50 hover:border-primary/30 transition-colors">
+                <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto">
                   <Users className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="font-semibold">Inclusão</h3>
-                <p className="text-sm text-muted-foreground">
-                  Atendemos todas as faixas etárias e origens socioeconômicas
+                <h3 className="font-bold text-lg">Inclusão Real</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Mensalidades a partir de R$60 e aconselhamento 100% gratuito para toda a família
                 </p>
               </div>
-              <div className="space-y-2">
-                <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
+              <div className="space-y-3 p-6 rounded-2xl bg-background border border-border/50 hover:border-primary/30 transition-colors">
+                <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto">
                   <Trophy className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="font-semibold">Desenvolvimento</h3>
-                <p className="text-sm text-muted-foreground">
-                  Foco no crescimento integral: corpo, mente e caráter
+                <h3 className="font-bold text-lg">Desenvolvimento Integral</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Corpo, mente e caráter. Disciplina, respeito e trabalho em equipe em cada aula
                 </p>
               </div>
-              <div className="space-y-2">
-                <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
+              <div className="space-y-3 p-6 rounded-2xl bg-background border border-border/50 hover:border-primary/30 transition-colors">
+                <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto">
                   <Heart className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="font-semibold">Comunidade</h3>
-                <p className="text-sm text-muted-foreground">
-                  Criamos laços e transformamos vidas juntos
+                <h3 className="font-bold text-lg">Raízes na Comunidade</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Atendemos famílias da Vila Lindóia e região há anos. Somos vizinhos, não apenas um serviço
                 </p>
               </div>
             </div>
@@ -155,7 +235,7 @@ const Index = () => {
         </div>
       </section>
 
-      <ActivitiesSection activities={activities} />
+      <ActivitiesSection activities={displayActivities} />
       <TestimonialsSection testimonials={testimonials} />
       <TherapySection />
       <LandingFooter />

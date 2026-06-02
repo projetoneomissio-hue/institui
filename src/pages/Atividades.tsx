@@ -320,7 +320,7 @@ const Atividades = () => {
                   <span className="text-sm font-bold text-foreground">{turma.nome}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-[10px] font-black tracking-tighter">
+                  <Badge variant="secondary" className="text-[10px] font-bold tracking-tighter">
                     {matriculasAtivas.length} ATIVOS
                   </Badge>
                   <Button 
@@ -409,7 +409,7 @@ const Atividades = () => {
       <div className="p-6 lg:p-8 space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-4xl font-black text-foreground tracking-tight">Atividades</h1>
+            <h1 className="text-2xl font-bold text-foreground">Atividades</h1>
             <p className="text-muted-foreground mt-1 text-base">
               Painel de controle e ocupação das modalidades
             </p>
@@ -487,7 +487,7 @@ const Atividades = () => {
                 return (
                   <Card 
                     key={atividade.id} 
-                    className="group relative overflow-hidden border-primary/10 hover:border-primary/40 transition-all hover:shadow-2xl hover:shadow-primary/5 bg-gradient-to-br from-card to-background cursor-pointer"
+                    className="group relative overflow-hidden border-border hover:border-primary/40 transition-all hover:shadow-lg cursor-pointer"
                     onClick={() => toggleExpand(atividade.id)}
                   >
                     <div className={cn(
@@ -501,7 +501,7 @@ const Atividades = () => {
                             {getActivityIcon(atividade.nome)}
                           </div>
                           <div>
-                            <CardTitle className="text-xl font-black">{atividade.nome}</CardTitle>
+                            <CardTitle className="text-xl font-bold">{atividade.nome}</CardTitle>
                             <Badge variant={atividade.ativa ? "outline" : "secondary"} className={cn(
                                 "text-[10px] uppercase font-bold px-2 py-0 border-none",
                                 atividade.ativa ? "text-green-500 bg-green-500/10" : "text-muted-foreground bg-muted"
@@ -520,7 +520,7 @@ const Atividades = () => {
                     <CardContent className="space-y-6 pt-2">
                       <div className="space-y-2">
                         <div className="flex justify-between items-end mb-1">
-                          <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Ocupação</span>
+                          <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wide">Ocupação</span>
                           <span className="text-xs font-bold text-foreground">{occupancy.total}/{occupancy.capacidade} alunos</span>
                         </div>
                         <Progress value={occupancy.porcentagem} className="h-2 bg-muted-foreground/10 overflow-hidden">
@@ -534,8 +534,8 @@ const Atividades = () => {
 
                       <div className="pt-4 border-t border-primary/5 flex items-center justify-between">
                         <div>
-                          <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Mensalidade</p>
-                          <p className="text-xl font-black text-primary">
+                          <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wide">Mensalidade</p>
+                          <p className="text-xl font-bold text-primary">
                             {new Intl.NumberFormat("pt-BR", {
                               style: "currency",
                               currency: "BRL",
@@ -590,10 +590,10 @@ const Atividades = () => {
               <table className="w-full text-left border-collapse">
                 <thead className="bg-muted/30">
                   <tr>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Modalidade</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ocupação</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Mensalidade</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right">Ações</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Modalidade</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Ocupação</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Mensalidade</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wide text-muted-foreground text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-primary/5">
@@ -631,7 +631,7 @@ const Atividades = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <p className="font-black text-sm text-primary">
+                          <p className="font-bold text-sm text-primary">
                             {new Intl.NumberFormat("pt-BR", {
                               style: "currency",
                               currency: "BRL",

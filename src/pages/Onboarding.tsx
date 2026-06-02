@@ -112,7 +112,7 @@ const Onboarding = () => {
             <Card className="w-full max-w-md shadow-soft border-none">
                 <CardHeader>
                     <CardTitle className="text-2xl text-center">
-                        {step === 1 && "Bem-vindo ao Neo Missio! 👋"}
+                        {step === 1 && `Bem-vindo ao ${currentUnidade?.nome || 'Zafen'}! 👋`}
                         {step === 2 && "Dados da Escola 🏫"}
                         {step === 3 && "Tudo Pronto! 🚀"}
                     </CardTitle>
@@ -147,7 +147,7 @@ const Onboarding = () => {
                                     <Label htmlFor="schoolName">Nome da Instituição *</Label>
                                     <Input
                                         id="schoolName"
-                                        placeholder="Ex: Neo Missio Curitiba"
+                                        placeholder="Ex: Minha Escola Zafen"
                                         value={schoolName}
                                         onChange={(e) => setSchoolName(e.target.value)}
                                         disabled={saving}
@@ -206,7 +206,7 @@ const Onboarding = () => {
             </Card>
 
             <p className="mt-8 text-center text-sm text-slate-400">
-                Neo Missio &copy; {new Date().getFullYear()}
+                {currentUnidade?.nome || 'Zafen'} &copy; {new Date().getFullYear()}
             </p>
         </div>
     );

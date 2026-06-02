@@ -112,52 +112,52 @@ export const SocialImpactDashboard = ({ alunos }: SocialImpactDashboardProps) =>
       
       {/* Top Impact KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 shadow-lg relative overflow-hidden group">
+        <Card className="bg-primary/10 border-primary/20 shadow-md relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <Users className="w-16 h-16 text-primary" />
           </div>
           <CardHeader className="pb-2">
             <CardDescription className="text-primary font-bold uppercase tracking-wider text-xs">Vidas Alcançadas</CardDescription>
-            <CardTitle className="text-4xl font-black text-primary">{alunos.length}</CardTitle>
+            <CardTitle className="text-4xl font-bold text-primary">{alunos.length}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-primary/80 font-medium">Alunos cadastrados na base</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-orange-500/10 to-orange-500/5 border-orange-500/20 shadow-lg relative overflow-hidden group">
+        <Card className="bg-orange-500/10 border-orange-500/20 shadow-md relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <MapPin className="w-16 h-16 text-orange-500" />
           </div>
           <CardHeader className="pb-2">
             <CardDescription className="text-orange-600 font-bold uppercase tracking-wider text-xs">Principal Bairro</CardDescription>
-            <CardTitle className="text-3xl font-black text-orange-600 truncate" title={topBairro}>{topBairro}</CardTitle>
+            <CardTitle className="text-3xl font-bold text-orange-600 truncate" title={topBairro}>{topBairro}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-orange-600/80 font-medium">{Object.keys(bairrosMap).length} bairros diferentes alcançados</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border-purple-500/20 shadow-lg relative overflow-hidden group">
+        <Card className="bg-purple-500/10 border-purple-500/20 shadow-md relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <Heart className="w-16 h-16 text-purple-500" />
           </div>
           <CardHeader className="pb-2">
             <CardDescription className="text-purple-600 font-bold uppercase tracking-wider text-xs">Inclusão (PNE)</CardDescription>
-            <CardTitle className="text-4xl font-black text-purple-600">{pneCount}</CardTitle>
+            <CardTitle className="text-4xl font-bold text-purple-600">{pneCount}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-purple-600/80 font-medium">Alunos com necessidades atendidos</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/20 shadow-lg relative overflow-hidden group">
+        <Card className="bg-emerald-500/10 border-emerald-500/20 shadow-md relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <Clock className="w-16 h-16 text-emerald-500" />
           </div>
           <CardHeader className="pb-2">
             <CardDescription className="text-emerald-600 font-bold uppercase tracking-wider text-xs">Retenção Média</CardDescription>
-            <CardTitle className="text-4xl font-black text-emerald-600">{averageRetention} <span className="text-xl">{retentionLabel}</span></CardTitle>
+            <CardTitle className="text-4xl font-bold text-emerald-600">{averageRetention} <span className="text-xl">{retentionLabel}</span></CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-emerald-600/80 font-medium">Tempo médio de permanência</p>
@@ -167,7 +167,7 @@ export const SocialImpactDashboard = ({ alunos }: SocialImpactDashboardProps) =>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Gráfico 1: Faixa Etária */}
-        <Card className="border-border shadow-md bg-card/60 backdrop-blur-sm">
+        <Card className="border-border shadow-md bg-card">
           <CardHeader>
             <CardTitle className="text-primary flex items-center gap-2">
               <Users className="w-5 h-5" /> Distribuição por Faixa Etária
@@ -197,7 +197,7 @@ export const SocialImpactDashboard = ({ alunos }: SocialImpactDashboardProps) =>
         </Card>
 
         {/* Gráfico 2: Bairros (Reach) */}
-        <Card className="border-border shadow-md bg-card/60 backdrop-blur-sm">
+        <Card className="border-border shadow-md bg-card">
           <CardHeader>
             <CardTitle className="text-orange-600 flex items-center gap-2">
               <MapPin className="w-5 h-5" /> Alcance Geográfico (Top 10)
@@ -227,7 +227,7 @@ export const SocialImpactDashboard = ({ alunos }: SocialImpactDashboardProps) =>
         </Card>
 
         {/* Gráfico 3: Inclusão (PNE) */}
-        <Card className="border-border shadow-md bg-card/60 backdrop-blur-sm">
+        <Card className="border-border shadow-md bg-card">
           <CardHeader>
             <CardTitle className="text-purple-600 flex items-center gap-2">
               <Heart className="w-5 h-5" /> Perfil de Inclusão
@@ -257,7 +257,7 @@ export const SocialImpactDashboard = ({ alunos }: SocialImpactDashboardProps) =>
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute text-center mt-[-10px]">
-                <p className="text-3xl font-black text-purple-600">
+                <p className="text-3xl font-bold text-purple-600">
                   {alunos.length > 0 ? ((pneCount / alunos.length) * 100).toFixed(1) : 0}%
                 </p>
                 <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Inclusão</p>

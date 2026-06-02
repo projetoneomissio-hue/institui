@@ -6,66 +6,65 @@
 
 @layer base {
   :root {
-    /* --- TEMA PADRÃO (GLOBAL / HOME / LOGIN) --- */
-    /* Primary: Atividade (Rosa Vibrante #E8004F) */
+    /* Brand */
     --primary: 340 100% 45%;
     --primary-foreground: 0 0% 100%;
 
-    /* Background: Gray 100 (#F5F5F5) */
-    --background: 0 0% 96%;
-    --foreground: 0 0% 10%;
-
+    /* Surfaces — Ice Blue institucional (MASTER.md — plataforma, não por tenant) */
+    --background: 210 40% 98%;       /* #F8FAFC */
+    --foreground: 217 32% 17%;       /* #1E293B slate-800 */
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
-
+    --card-foreground: 217 32% 17%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --popover-foreground: 217 32% 17%;
 
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 10%;
+    /* Secondary chips/tags */
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 217 32% 17%;
 
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 46%;
+    /* Muted — slate-500 for helper text */
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 47%; /* #64748B */
 
-    --accent: 0 100% 95%;
-    --accent-foreground: 0 100% 40%;
+    /* Accent — brand flavor on subtle elements */
+    --accent: 340 100% 96%;
+    --accent-foreground: 340 100% 38%;
 
-    --destructive: 0 100% 45%;
+    /* Semantic */
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
+    --success: 153 60% 45%;
+    --warning: 43 96% 50%;
+    --warning-foreground: 43 96% 18%;
+    --info: 217 91% 60%;
 
-    --border: 0 0% 91%;
-    --input: 0 0% 91%;
+    /* Borders — Linear style: very subtle slate-200 */
+    --border: 214 32% 91%;           /* #E2E8F0 */
+    --input: 214 32% 91%;
     --ring: 340 100% 45%;
+    --radius: 0.75rem;
 
-    --radius: 0.5rem;
-    /* Padrão mais quadrado na home */
-
-    /* Sidebar Default (Home/Base) */
+    /* Sidebar — white solid, cleanly separated */
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 0 0% 10%;
+    --sidebar-foreground: 217 32% 17%;
     --sidebar-primary: 340 100% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 96%;
-    --sidebar-accent-foreground: 340 100% 45%;
-    --sidebar-border: 0 0% 91%;
+    --sidebar-accent: 210 20% 96%;
+    --sidebar-accent-foreground: 340 100% 42%;
+    --sidebar-border: 214 32% 91%;
     --sidebar-ring: 340 100% 45%;
 
-    /* Charts Default */
-    --chart-1: 0 100% 40%;
-    --chart-2: 153 60% 53%;
-    --chart-3: 28 85% 60%;
-    --chart-4: 43 96% 56%;
-    --chart-5: 340 82% 52%;
-
-    --success: 153 60% 53%;
-    --warning: 43 96% 56%;
-    --warning-foreground: 43 96% 20%;
-    --info: 0 100% 40%;
+    /* Charts */
+    --chart-1: 340 82% 52%;
+    --chart-2: 153 60% 45%;
+    --chart-3: 191 80% 45%;
+    --chart-4: 43 96% 50%;
+    --chart-5: 271 76% 53%;
   }
 
-  /* --- TEMA PREMIUM NEO MISSIO (DASHBOARD) --- */
+  /* --- TEMA PREMIUM (DASHBOARD) --- */
   .humanized-theme {
-    /* --- CORES OFICIAIS NEO MISSIO --- */
+    /* --- CORES OFICIAIS --- */
     --background: 210 40% 98%;
     --foreground: 0 0% 10%;
 

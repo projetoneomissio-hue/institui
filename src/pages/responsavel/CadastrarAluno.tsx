@@ -26,8 +26,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { WizardSteps } from "@/components/ui/wizard-steps";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, Camera, User, AlertCircle, ArrowRight, ArrowLeft, Save, CheckCircle, Paperclip, FileText, Trash2 } from "lucide-react";
+import { Loader2, Camera, User, AlertCircle, ArrowRight, ArrowLeft, Save, CheckCircle, Paperclip, FileText, Trash2, Search } from "lucide-react";
 import { formatCPF, unmaskCPF, validateCPF } from "@/utils/cpf";
+import { formatCEP, fetchCEP } from "@/utils/cep";
 import { compressImage } from "@/utils/compressImage";
 import { alunosService } from "@/services/alunos.service";
 
@@ -75,6 +76,9 @@ const CadastrarAluno = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadingLaudo, setUploadingLaudo] = useState(false);
   const [cpfError, setCpfError] = useState<string | null>(null);
+  const [cep, setCep] = useState("");
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepError, setCepError] = useState<string | null>(null);
 
   // Photo Upload Handler
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -263,6 +267,27 @@ const CadastrarAluno = () => {
     },
   });
 
+  const handleCepChange = async (value: string) => {
+    const formatted = formatCEP(value);
+    setCep(formatted);
+    setCepError(null);
+    const clean = formatted.replace(/\D/g, "");
+    if (clean.length === 8) {
+      setCepLoading(true);
+      const result = await fetchCEP(clean);
+      setCepLoading(false);
+      if (result) {
+        setFormData(prev => ({
+          ...prev,
+          endereco: result.logradouro,
+          bairro: result.bairro,
+        }));
+      } else {
+        setCepError("CEP não encontrado.");
+      }
+    }
+  };
+
   const handleCpfChange = (value: string) => {
     // Apenas números para a máscara funcionar bem
     const onlyNumbers = value.replace(/\D/g, "");
@@ -342,6 +367,23 @@ const CadastrarAluno = () => {
               {currentStep === 1 && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
                   <div className="space-y-4">
+                    {/* Atalho: sou eu mesmo o aluno */}
+                    {user?.name && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, nomeCompleto: user.name!, grauParentesco: "Próprio" })}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors text-left"
+                      >
+                        <div className="h-9 w-9 bg-primary/20 rounded-full flex items-center justify-center shrink-0 text-primary font-bold">
+                          {user.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-primary uppercase tracking-wide">Sou eu mesmo o aluno</p>
+                          <p className="text-sm text-foreground truncate">{user.name}</p>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-primary shrink-0" />
+                      </button>
+                    )}
                     <div className="space-y-2">
                       <Label htmlFor="nomeCompleto">Nome Completo <span className="text-destructive">*</span></Label>
                       <Input
@@ -384,27 +426,15 @@ const CadastrarAluno = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="rg">RG do Aluno</Label>
-                        <Input
-                          id="rg"
-                          value={formData.rg}
-                          onChange={(e) => setFormData({ ...formData, rg: e.target.value })}
-                          placeholder="Digite o RG"
-                          className="h-11"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="bairro">Bairro</Label>
-                        <Input
-                          id="bairro"
-                          value={formData.bairro}
-                          onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
-                          placeholder="Ex: Lindóia"
-                          className="h-11"
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="rg">RG do Aluno</Label>
+                      <Input
+                        id="rg"
+                        value={formData.rg}
+                        onChange={(e) => setFormData({ ...formData, rg: e.target.value })}
+                        placeholder="Digite o RG"
+                        className="h-11"
+                      />
                     </div>
                   </div>
                 </div>
@@ -424,13 +454,48 @@ const CadastrarAluno = () => {
                         className="h-11"
                       />
                     </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="cep">CEP</Label>
+                        <div className="relative">
+                          <Input
+                            id="cep"
+                            value={cep}
+                            onChange={(e) => handleCepChange(e.target.value)}
+                            placeholder="00000-000"
+                            maxLength={9}
+                            className="h-11 pr-10"
+                          />
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            {cepLoading ? (
+                              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            ) : (
+                              <Search className="h-4 w-4 text-muted-foreground/40" />
+                            )}
+                          </div>
+                        </div>
+                        {cepError && <p className="text-xs text-destructive">{cepError}</p>}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="bairro">Bairro</Label>
+                        <Input
+                          id="bairro"
+                          value={formData.bairro}
+                          onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
+                          placeholder="Bairro"
+                          className="h-11"
+                        />
+                      </div>
+                    </div>
+
                     <div className="space-y-2">
-                      <Label htmlFor="endereco">Endereço Completo</Label>
+                      <Label htmlFor="endereco">Rua / Endereço Completo</Label>
                       <Textarea
                         id="endereco"
                         value={formData.endereco}
                         onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
-                        placeholder="Rua, Número..."
+                        placeholder="Rua, Número, Complemento..."
                         rows={2}
                       />
                     </div>
@@ -504,7 +569,7 @@ const CadastrarAluno = () => {
                           </Select>
                         </div>
                         <div className="md:col-span-2 space-y-2 border-l border-muted pl-4">
-                          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mt-1">Dica de Segurança</p>
+                          <p className="text-[10px] text-muted-foreground uppercase mt-1">Dica de Segurança</p>
                           <p className="text-[11px] leading-snug">O tipo sanguíneo ajuda a equipe médica em casos de emergência. Se não souber, pode deixar em branco.</p>
                         </div>
                       </div>

@@ -1,19 +1,17 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { GlassCard } from "@/components/dashboard/GlassCard";
+import { Card } from "@/components/ui/card";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { solicitacoesService } from "@/services/solicitacoes.service";
 import { alunosService } from "@/services/alunos.service";
 import { infinitePayService } from "@/services/infinitepay.service";
 import { Link, Copy, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-    Phone, 
-    UserPlus, 
-    XCircle, 
-    Search, 
-    Filter, 
+import {
+    Phone,
+    UserPlus,
+    Search,
+    Filter,
     MoreHorizontal,
-    MessageCircle,
     Calendar,
     GraduationCap,
     School,
@@ -24,25 +22,24 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-    DropdownMenu, 
-    DropdownMenuContent, 
-    DropdownMenuItem, 
-    DropdownMenuTrigger 
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { 
-    Dialog, 
-    DialogContent, 
-    DialogDescription, 
-    DialogFooter, 
-    DialogHeader, 
-    DialogTitle 
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle
 } from "@/components/ui/dialog";
 import { useUnidade } from "@/contexts/UnidadeContext";
 import {
@@ -70,13 +67,16 @@ export default function Interessados() {
         loading: false,
         leadDetails: null
     });
-    
-    // Smart Conversion States
+
     const [responsavelNome, setResponsavelNome] = useState("");
     const [responsavelEmail, setResponsavelEmail] = useState("");
     const [isExistingResp, setIsExistingResp] = useState(true);
     const [isCheckingResp, setIsCheckingResp] = useState(false);
     const [isentarTaxa, setIsentarTaxa] = useState(false);
+
+    const [completarFichaOpen, setCompletarFichaOpen] = useState(false);
+    const [fichaLead, setFichaLead] = useState<any>(null);
+    const [fichaData, setFichaData] = useState({ escola: "", serie_ano: "", cpf_responsavel: "" });
 
     const { data: leads, isLoading } = useQuery({
         queryKey: ["direcao-interessados"],
@@ -84,7 +84,7 @@ export default function Interessados() {
     });
 
     const updateStatusMutation = useMutation({
-        mutationFn: ({ id, status }: { id: string, status: any }) => 
+        mutationFn: ({ id, status }: { id: string, status: any }) =>
             solicitacoesService.updateStatus(id, status),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["direcao-interessados"] });
@@ -97,7 +97,6 @@ export default function Interessados() {
         }
     });
 
-    // Real conversion logic with financial rules and responsible check
     const convertMutation = useMutation({
         mutationFn: async ({ lead, manualIsento }: { lead: any, manualIsento: boolean }) => {
             if (!currentUnidade?.id) throw new Error("Unidade não selecionada.");
@@ -105,7 +104,6 @@ export default function Interessados() {
             const { data: { session } } = await supabase.auth.getSession();
             const adminId = session?.user?.id;
 
-            // 1. Verificar se o Responsável já existe (por CPF ou Email)
             const cleanCpfResp = lead.cpf_responsavel ? lead.cpf_responsavel.replace(/\D/g, "") : null;
             let finalRespId = null;
             let needsInvitation = false;
@@ -123,12 +121,9 @@ export default function Interessados() {
                     throw new Error("Responsável não encontrado. Preencha o Nome e E-mail para prosseguir.");
                 }
                 needsInvitation = true;
-                // Temporarily use the Admin's ID to satisfy the Foreign Key constraint for creating the Aluno.
-                // It will be re-assigned when the Responsible redeems the invitation.
                 finalRespId = adminId;
             }
 
-            // 2. Verificar se o Aluno já existe
             const { aluno: existingAluno } = await alunosService.checkGlobalDuplicate({
                 nome: lead.nome_completo,
                 dataNascimento: lead.data_nascimento
@@ -136,10 +131,9 @@ export default function Interessados() {
 
             let alunoId = existingAluno?.id;
 
-            // 3. Se não existe, cria o Aluno
             if (!alunoId) {
-                const nomeFinal = lead.sobrenome 
-                    ? `${lead.nome_completo} ${lead.sobrenome}`.trim() 
+                const nomeFinal = lead.sobrenome
+                    ? `${lead.nome_completo} ${lead.sobrenome}`.trim()
                     : lead.nome_completo;
 
                 const { data: newAluno, error: alunoError } = await supabase.from("alunos").insert({
@@ -154,7 +148,6 @@ export default function Interessados() {
                 alunoId = newAluno.id;
             }
 
-            // 4. Se precisava de convite, gerar AGORA e disparar o e-mail
             if (needsInvitation) {
                 const inviteToken = crypto.randomUUID();
                 await supabase.from("invitations").insert({
@@ -165,7 +158,6 @@ export default function Interessados() {
                     expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
                 } as any);
 
-                // Disparar o envio real do e-mail
                 await supabase.functions.invoke('send-invitation-email', {
                   body: {
                     to: responsavelEmail,
@@ -177,9 +169,8 @@ export default function Interessados() {
                 });
             }
 
-            // 4. Regra de Taxa de Matrícula: Verificar histórico (a menos que já esteja isento manualmente)
             let isFirstTime = false;
-            
+
             if (!manualIsento) {
                 const { data: matriculasAnteriores } = await supabase
                     .from("matriculas")
@@ -189,7 +180,6 @@ export default function Interessados() {
                 isFirstTime = !matriculasAnteriores || matriculasAnteriores.length === 0;
             }
 
-            // 5. Tentar encontrar a Atividade e uma Turma compatível
             let targetTurmaId = null;
             if (lead.atividade_desejada) {
                 const buscaAmpla = lead.atividade_desejada.replace(/-/g, " ");
@@ -208,12 +198,11 @@ export default function Interessados() {
                         .eq("ativa", true)
                         .limit(1)
                         .maybeSingle();
-                    
+
                     if (turma) targetTurmaId = turma.id;
                 }
             }
 
-            // Fallback: Se não achou turma compatível, pega a primeira turma ativa para garantir a geração da matrícula/pagamento.
             if (!targetTurmaId) {
                  const { data: fallbackTurma } = await supabase
                         .from("turmas")
@@ -224,7 +213,6 @@ export default function Interessados() {
                  if (fallbackTurma) targetTurmaId = fallbackTurma.id;
             }
 
-            // 6. Criar Matrícula Pendente (se encontramos a turma)
             let matriculaId = null;
             if (targetTurmaId) {
                 const { data: newMatricula, error: matError } = await supabase.from("matriculas").insert({
@@ -233,28 +221,26 @@ export default function Interessados() {
                     status: "pendente",
                     data_inicio: new Date().toISOString().split("T")[0]
                 }).select().single();
-                
+
                 if (!matError) matriculaId = newMatricula.id;
             }
 
-            // 7. Se for 1ª vez e tiver matrícula, gerar Taxa
             let pagamentoId = null;
             if (isFirstTime && matriculaId) {
                 const { data: pagamentoData, error: pagError } = await supabase.from("pagamentos").insert({
                     matricula_id: matriculaId,
-                    valor: 25.00, // Sugestão baseada no MatriculasPendentes.tsx
+                    valor: 25.00,
                     data_vencimento: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
                     status: "pendente",
                     referencia: "TAXA-MATRICULA",
                     unidade_id: currentUnidade.id
                 }).select().single();
-                
+
                 if (!pagError) pagamentoId = pagamentoData.id;
             }
 
-            // 8. Finalizar Solicitação
             await solicitacoesService.updateStatus(lead.id, "aprovada");
-            
+
             return { alunoId, isFirstTime, matriculaCriada: !!matriculaId, pagamentoId, lead };
 
         },
@@ -263,8 +249,7 @@ export default function Interessados() {
             queryClient.invalidateQueries({ queryKey: ["solicitacoes"] });
             queryClient.invalidateQueries({ queryKey: ["alunos"] });
             setIsConvertDialogOpen(false);
-            
-            // Se gerou um pagamentoId, vamos tentar criar o link
+
             if (data.pagamentoId) {
                 setCheckoutLinkDialog({ open: true, link: null, loading: true, leadDetails: data.lead });
                 try {
@@ -276,15 +261,15 @@ export default function Interessados() {
                 }
             } else {
                 if (data.isFirstTime === false) {
-                     toast({ 
-                        title: "✅ Conversão Concluída (Isento)", 
-                        description: "O aluno já possuía uma matrícula em nosso sistema (provavelmente em outra atividade). A taxa de matrícula de R$25 não será cobrada novamente, pois é vitalícia. Nenhuma fatura foi gerada.",
+                     toast({
+                        title: "Conversão Concluída (Isento)",
+                        description: "O aluno já possuía uma matrícula. A taxa de matrícula de R$25 não será cobrada novamente.",
                         duration: 8000
                     });
                 } else {
-                     toast({ 
-                        title: "Lead convertido!", 
-                        description: "Aluno convertido, mas não foi possível gerar a fatura. Você pode emiti-la futuramente na tela de Matrículas." 
+                     toast({
+                        title: "Lead convertido!",
+                        description: "Aluno convertido, mas não foi possível gerar a fatura. Você pode emiti-la futuramente na tela de Matrículas."
                     });
                 }
             }
@@ -294,8 +279,27 @@ export default function Interessados() {
         }
     });
 
+    const completarFichaMutation = useMutation({
+        mutationFn: async ({ id, escola, serie_ano, cpf_responsavel }: { id: string; escola: string; serie_ano: string; cpf_responsavel: string }) => {
+            const { error } = await supabase
+                .from("solicitacoes_matricula")
+                .update({ escola: escola || null, serie_ano: serie_ano || null, cpf_responsavel: cpf_responsavel || null, status: "pendente" })
+                .eq("id", id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["direcao-interessados"] });
+            queryClient.invalidateQueries({ queryKey: ["management-leads-counts"] });
+            toast({ title: "Ficha avançada!", description: "Lead movido para Ficha Completa." });
+            setCompletarFichaOpen(false);
+            setFichaLead(null);
+            setFichaData({ escola: "", serie_ano: "", cpf_responsavel: "" });
+        },
+        onError: () => toast({ title: "Erro ao atualizar ficha", variant: "destructive" }),
+    });
+
     const filteredLeads = leads?.filter(lead => {
-        const matchesSearch = lead.nome_completo.toLowerCase().includes(search.toLowerCase()) || 
+        const matchesSearch = lead.nome_completo.toLowerCase().includes(search.toLowerCase()) ||
                              lead.sobrenome?.toLowerCase().includes(search.toLowerCase());
         const matchesStatus = filterStatus === "todos" || lead.status === filterStatus;
         return matchesSearch && matchesStatus;
@@ -309,10 +313,10 @@ export default function Interessados() {
 
     const getStatusBadge = (status: string) => {
         switch (status) {
-            case "interessado": return <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 border-none font-black text-[10px]">PASSO 1</Badge>;
-            case "pendente": return <Badge variant="secondary" className="bg-[#FFC200]/10 text-[#FFC200] border-none font-black text-[10px]">FICHA COMPLETA</Badge>;
-            case "aprovada": return <Badge variant="secondary" className="bg-green-500/10 text-green-500 border-none font-black text-[10px]">CONVERTIDO</Badge>;
-            case "rejeitada": return <Badge variant="secondary" className="bg-red-500/10 text-red-500 border-none font-black text-[10px]">REJEITADO</Badge>;
+            case "interessado": return <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 border-none font-semibold text-[10px]">PASSO 1</Badge>;
+            case "pendente": return <Badge variant="secondary" className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 border-none font-semibold text-[10px]">FICHA COMPLETA</Badge>;
+            case "aprovada": return <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 border-none font-semibold text-[10px]">CONVERTIDO</Badge>;
+            case "rejeitada": return <Badge variant="secondary" className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 border-none font-semibold text-[10px]">REJEITADO</Badge>;
             default: return <Badge variant="outline">{status}</Badge>;
         }
     };
@@ -323,44 +327,70 @@ export default function Interessados() {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                        <h1 className="text-3xl font-black tracking-tight uppercase italic">
-                            Gestão de <span className="text-[#E8004F]">Interessados</span>
+                        <h1 className="text-2xl font-bold text-foreground">
+                            Gestão de <span className="text-primary">Interessados</span>
                         </h1>
-                        <p className="text-muted-foreground/60 text-sm font-medium uppercase tracking-[0.2em] mt-1">
+                        <p className="text-sm text-muted-foreground mt-0.5">
                             Acompanhamento de Leads e Solicitações de Matrícula
                         </p>
                     </div>
                 </div>
 
+                {/* Pipeline Visual */}
+                {!isLoading && leads && leads.length > 0 && (() => {
+                    const qtdInteressado = leads.filter(l => l.status === "interessado").length;
+                    const qtdPendente = leads.filter(l => l.status === "pendente").length;
+                    const qtdAprovada = leads.filter(l => l.status === "aprovada").length;
+                    const total = leads.length;
+                    return (
+                        <div className="grid grid-cols-3 gap-3">
+                            {[
+                                { label: "Passo 1 · Lead", value: qtdInteressado, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/20", bar: "bg-blue-500", pct: total > 0 ? (qtdInteressado / total) * 100 : 0 },
+                                { label: "Ficha Completa", value: qtdPendente, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-900/20", bar: "bg-amber-400", pct: total > 0 ? (qtdPendente / total) * 100 : 0 },
+                                { label: "Convertidos", value: qtdAprovada, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/20", bar: "bg-emerald-500", pct: total > 0 ? (qtdAprovada / total) * 100 : 0 },
+                            ].map((stage) => (
+                                <div key={stage.label} className={`rounded-xl p-4 ${stage.bg} border border-border space-y-2`}>
+                                    <p className={`text-[11px] font-semibold uppercase tracking-wide ${stage.color}`}>{stage.label}</p>
+                                    <p className={`text-3xl font-bold ${stage.color}`}>{stage.value}</p>
+                                    <div className="h-1.5 w-full bg-border rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full ${stage.bar} transition-all duration-700`} style={{ width: `${stage.pct}%` }} />
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground">{Math.round(stage.pct)}% do total</p>
+                                </div>
+                            ))}
+                        </div>
+                    );
+                })()}
+
                 {/* Filters */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="Buscar por nome..." 
-                            className="pl-10 bg-card border-none shadow-sm h-11 font-medium"
+                        <Input
+                            placeholder="Buscar por nome..."
+                            className="pl-10 h-10"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
                     <div className="flex gap-2">
-                        <Button 
+                        <Button
                             variant={filterStatus === "todos" ? "default" : "outline"}
-                            className={`flex-1 h-11 font-black uppercase text-[10px] ${filterStatus === "todos" ? "bg-[#E8004F]" : ""}`}
+                            className="flex-1 h-10 font-semibold text-xs"
                             onClick={() => setFilterStatus("todos")}
                         >
                             Todos
                         </Button>
-                        <Button 
+                        <Button
                             variant={filterStatus === "interessado" ? "default" : "outline"}
-                            className={`flex-1 h-11 font-black uppercase text-[10px] ${filterStatus === "interessado" ? "bg-blue-500" : ""}`}
+                            className={`flex-1 h-10 font-semibold text-xs ${filterStatus === "interessado" ? "bg-blue-600 hover:bg-blue-700 border-0" : ""}`}
                             onClick={() => setFilterStatus("interessado")}
                         >
                             Leads
                         </Button>
-                        <Button 
+                        <Button
                             variant={filterStatus === "pendente" ? "default" : "outline"}
-                            className={`flex-1 h-11 font-black uppercase text-[10px] ${filterStatus === "pendente" ? "bg-[#FFC200] text-black" : ""}`}
+                            className={`flex-1 h-10 font-semibold text-xs ${filterStatus === "pendente" ? "bg-amber-500 hover:bg-amber-600 text-white border-0" : ""}`}
                             onClick={() => setFilterStatus("pendente")}
                         >
                             Fichas
@@ -369,14 +399,14 @@ export default function Interessados() {
                 </div>
 
                 {/* Leads Table */}
-                <GlassCard title="" className="p-0 overflow-hidden border-border/40">
+                <Card className="p-0 overflow-hidden">
                     <Table>
-                        <TableHeader className="bg-foreground/[0.02]">
-                            <TableRow className="hover:bg-transparent border-border/40">
-                                <TableHead className="w-[300px] font-black uppercase text-[10px] tracking-widest text-muted-foreground/60 py-4 pl-6">Aluno / Inscrição</TableHead>
-                                <TableHead className="font-black uppercase text-[10px] tracking-widest text-muted-foreground/60">Atividade</TableHead>
-                                <TableHead className="font-black uppercase text-[10px] tracking-widest text-muted-foreground/60">Status</TableHead>
-                                <TableHead className="font-black uppercase text-[10px] tracking-widest text-muted-foreground/60 text-right pr-6">Ações</TableHead>
+                        <TableHeader className="bg-muted/30">
+                            <TableRow className="hover:bg-transparent border-border">
+                                <TableHead className="w-[300px] font-semibold uppercase text-[10px] tracking-wide text-muted-foreground py-4 pl-6">Aluno / Inscrição</TableHead>
+                                <TableHead className="font-semibold uppercase text-[10px] tracking-wide text-muted-foreground">Atividade</TableHead>
+                                <TableHead className="font-semibold uppercase text-[10px] tracking-wide text-muted-foreground">Status</TableHead>
+                                <TableHead className="font-semibold uppercase text-[10px] tracking-wide text-muted-foreground text-right pr-6">Ações</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -384,84 +414,80 @@ export default function Interessados() {
                                 Array(6).fill(0).map((_, i) => (
                                     <TableRow key={i}>
                                         <TableCell colSpan={4} className="p-4">
-                                            <div className="h-12 w-full bg-foreground/5 animate-pulse rounded-lg" />
+                                            <div className="h-12 w-full bg-muted animate-pulse rounded-lg" />
                                         </TableCell>
                                     </TableRow>
                                 ))
                             ) : filteredLeads && filteredLeads.length > 0 ? (
                                 filteredLeads.map((lead) => (
-                                    <TableRow key={lead.id} className="group hover:bg-foreground/[0.02] border-border/20 transition-all duration-300">
-                                        {/* Aluno Info */}
+                                    <TableRow key={lead.id} className="group hover:bg-muted/30 border-border transition-colors">
                                         <TableCell className="py-4 pl-6">
                                             <div className="flex items-center gap-4">
-                                                <Avatar className="h-10 w-10 rounded-xl border border-border/40 shadow-sm transition-transform group-hover:scale-110 duration-500">
-                                                    <AvatarFallback className="bg-primary/5 text-primary font-black text-sm uppercase">
+                                                <Avatar className="h-9 w-9 rounded-xl border border-border">
+                                                    <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm rounded-xl">
                                                         {lead.nome_completo[0]}
                                                     </AvatarFallback>
                                                 </Avatar>
                                                 <div className="flex flex-col">
-                                                    <p className="font-black text-foreground text-sm uppercase leading-none mb-1">
-                                                        {lead.nome_completo} <span className="text-muted-foreground/40 ml-1 font-bold">{lead.sobrenome}</span>
+                                                    <p className="font-semibold text-foreground text-sm leading-tight">
+                                                        {lead.nome_completo} {lead.sobrenome && <span className="text-muted-foreground font-normal">{lead.sobrenome}</span>}
                                                     </p>
-                                                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">
+                                                    <span className="text-[10px] text-muted-foreground mt-0.5">
                                                         {format(new Date(lead.created_at), "dd 'de' MMMM", { locale: ptBR })}
                                                     </span>
                                                 </div>
                                             </div>
                                         </TableCell>
 
-                                        {/* Atividade & Detalhes */}
                                         <TableCell>
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-2">
-                                                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tight py-0 px-2 h-5 border-border/40">
+                                                    <Badge variant="outline" className="text-[10px] font-medium py-0 px-2 h-5">
                                                         {lead.atividade_desejada || "Geral"}
                                                     </Badge>
                                                     {lead.necessidades_especiais && (
                                                         <TooltipProvider>
                                                             <Tooltip>
                                                                 <TooltipTrigger>
-                                                                    <HeartPulse className="h-3.5 w-3.5 text-amber-500/80" />
+                                                                    <HeartPulse className="h-3.5 w-3.5 text-amber-500" />
                                                                 </TooltipTrigger>
-                                                                <TooltipContent side="right" className="bg-amber-50 border-amber-200 text-amber-700 text-[10px] font-bold uppercase p-2">
+                                                                <TooltipContent side="right" className="bg-amber-50 border-amber-200 text-amber-700 text-[10px] font-medium p-2">
                                                                     {lead.necessidades_especiais}
                                                                 </TooltipContent>
                                                             </Tooltip>
                                                         </TooltipProvider>
                                                     )}
                                                 </div>
-                                                <p className="text-[10px] font-bold text-muted-foreground/60 uppercase italic flex items-center gap-1">
-                                                    <Calendar className="h-2.5 w-2.5" /> 
+                                                <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                                    <Calendar className="h-2.5 w-2.5" />
                                                     {format(new Date(lead.data_nascimento), "dd/MM/yyyy")}
                                                 </p>
                                             </div>
                                         </TableCell>
 
-                                        {/* Status */}
                                         <TableCell>
                                             <div className="flex flex-col gap-1.5 min-w-[120px]">
                                                 {getStatusBadge(lead.status)}
                                                 {lead.escola && (
-                                                    <span className="text-[9px] font-bold text-muted-foreground/60 uppercase truncate max-w-[150px]">
+                                                    <span className="text-[10px] text-muted-foreground truncate max-w-[150px]">
                                                         {lead.escola}
                                                     </span>
                                                 )}
                                             </div>
                                         </TableCell>
 
-                                        {/* Ações */}
                                         <TableCell className="text-right pr-6">
                                             <div className="flex items-center justify-end gap-2">
                                                 <TooltipProvider>
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
-                                                            <Button 
+                                                            <Button
                                                                 size="icon"
                                                                 variant="outline"
-                                                                className="h-9 w-9 bg-[#25D366]/5 border-[#25D366]/20 text-[#25D366] hover:bg-[#25D366] hover:text-white transition-all duration-300"
+                                                                className="h-8 w-8 bg-[#25D366]/5 border-[#25D366]/20 text-[#25D366] hover:bg-[#25D366] hover:text-white transition-all"
                                                                 onClick={() => handleWhatsApp(lead)}
                                                             >
-                                                                <Phone className="h-4 w-4" />
+                                                                <Phone className="h-3.5 w-3.5" />
                                                             </Button>
                                                         </TooltipTrigger>
                                                         <TooltipContent>WhatsApp</TooltipContent>
@@ -470,19 +496,34 @@ export default function Interessados() {
 
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="outline" size="icon" className="h-9 w-9 border-border/40 hover:bg-foreground/[0.05] transition-all">
+                                                        <Button variant="outline" size="icon" className="h-8 w-8">
                                                             <MoreHorizontal className="h-4 w-4" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end" className="w-48 p-1 rounded-xl">
+                                                        {lead.status === "interessado" && (
+                                                            <DropdownMenuItem
+                                                                className="gap-2 font-medium text-xs p-2 rounded-lg text-blue-600 focus:text-blue-600 focus:bg-blue-50"
+                                                                onClick={() => {
+                                                                    setFichaLead(lead);
+                                                                    setFichaData({
+                                                                        escola: lead.escola || "",
+                                                                        serie_ano: lead.serie_ano || "",
+                                                                        cpf_responsavel: lead.cpf_responsavel || "",
+                                                                    });
+                                                                    setCompletarFichaOpen(true);
+                                                                }}
+                                                            >
+                                                                <School className="h-4 w-4" /> Completar Ficha
+                                                            </DropdownMenuItem>
+                                                        )}
                                                         {lead.status !== "aprovada" && (
-                                                            <DropdownMenuItem 
-                                                                className="gap-2 font-bold text-xs uppercase p-2 rounded-lg text-green-600 focus:text-green-600 focus:bg-green-50"
+                                                            <DropdownMenuItem
+                                                                className="gap-2 font-medium text-xs p-2 rounded-lg text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50"
                                                                 onClick={async () => {
                                                                     setSelectedLead(lead);
                                                                     setIsConvertDialogOpen(true);
-                                                                    
-                                                                    // Check if responsible exists
+
                                                                     setIsCheckingResp(true);
                                                                     const cleanCpf = lead.cpf_responsavel?.replace(/\D/g, "");
                                                                     const { data: profile } = await supabase
@@ -490,7 +531,7 @@ export default function Interessados() {
                                                                         .select("id, nome_completo, email")
                                                                         .or(`email.eq.${lead.email_responsavel || ""},cpf.eq.${cleanCpf || "NONE"}`)
                                                                         .maybeSingle();
-                                                                    
+
                                                                     if (profile) {
                                                                         setIsExistingResp(true);
                                                                     } else {
@@ -504,8 +545,8 @@ export default function Interessados() {
                                                                 <UserPlus className="h-4 w-4" /> Converter Aluno
                                                             </DropdownMenuItem>
                                                         )}
-                                                        <DropdownMenuItem 
-                                                            className="gap-2 font-bold text-xs uppercase p-2 rounded-lg text-red-600 focus:text-red-600 focus:bg-red-50"
+                                                        <DropdownMenuItem
+                                                            className="gap-2 font-medium text-xs p-2 rounded-lg text-red-600 focus:text-red-600 focus:bg-red-50"
                                                             onClick={async () => {
                                                                 if (confirm("Deseja realmente rejeitar esta solicitação?")) {
                                                                     await solicitacoesService.updateStatus(lead.id, "rejeitada");
@@ -526,15 +567,15 @@ export default function Interessados() {
                                 <TableRow>
                                     <TableCell colSpan={4} className="py-20 text-center">
                                         <div className="flex flex-col items-center gap-3 opacity-30">
-                                            <Search className="h-10 w-10" />
-                                            <p className="font-black uppercase tracking-widest text-[10px]">Nenhum registro encontrado</p>
+                                            <Filter className="h-10 w-10" />
+                                            <p className="text-xs text-muted-foreground">Nenhum registro encontrado</p>
                                         </div>
                                     </TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
                     </Table>
-                </GlassCard>
+                </Card>
             </div>
 
             {/* Convert Dialog */}
@@ -547,33 +588,33 @@ export default function Interessados() {
                     setIsentarTaxa(false);
                 }
             }}>
-                <DialogContent className="max-w-md rounded-2xl border-none shadow-2xl overflow-hidden p-0">
-                    <div className="h-1.5 w-full bg-green-500" />
+                <DialogContent className="max-w-md rounded-2xl overflow-hidden p-0">
+                    <div className="h-1.5 w-full bg-emerald-500" />
                     <div className="p-6">
                         <DialogHeader>
-                            <DialogTitle className="text-2xl font-black uppercase italic italic flex items-center gap-3">
-                                <GraduationCap className="h-6 w-6 text-green-500" />
-                                Converter <span className="text-green-500">em Aluno</span>
+                            <DialogTitle className="text-xl font-bold flex items-center gap-3">
+                                <GraduationCap className="h-5 w-5 text-emerald-500" />
+                                Converter em <span className="text-emerald-500">Aluno</span>
                             </DialogTitle>
-                            <DialogDescription className="font-medium text-base mt-2">
+                            <DialogDescription className="mt-2">
                                 Você está prestes a converter <strong>{selectedLead?.nome_completo}</strong> em um aluno registrado no sistema.
                             </DialogDescription>
                         </DialogHeader>
 
-                        <div className="my-6 p-4 rounded-xl bg-foreground/[0.03] border border-border/50 space-y-3">
-                            <div className="flex justify-between text-[11px] font-black uppercase opacity-60">
-                                <span>Aluno</span>
-                                <span className="text-foreground">{selectedLead?.nome_completo} {selectedLead?.sobrenome}</span>
+                        <div className="my-5 p-4 rounded-xl bg-muted/40 border border-border space-y-2">
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                                <span className="font-medium">Aluno</span>
+                                <span className="text-foreground font-semibold">{selectedLead?.nome_completo} {selectedLead?.sobrenome}</span>
                             </div>
-                            <div className="flex justify-between text-[11px] font-black uppercase opacity-60">
-                                <span>Atividade</span>
-                                <Badge variant="secondary" className="bg-primary/10 text-primary h-4 text-[8px] font-black">{selectedLead?.atividade_desejada || "Geral"}</Badge>
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                                <span className="font-medium">Atividade</span>
+                                <Badge variant="secondary" className="bg-primary/10 text-primary h-4 text-[9px] font-semibold">{selectedLead?.atividade_desejada || "Geral"}</Badge>
                             </div>
                         </div>
 
                         {!isExistingResp && (
-                            <div className="mb-6 p-5 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-4 animate-in slide-in-from-top-2">
-                                <div className="flex items-center gap-2 text-amber-600 font-black text-xs uppercase italic">
+                            <div className="mb-5 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 space-y-4 animate-in slide-in-from-top-2">
+                                <div className="flex items-center gap-2 text-amber-600 font-semibold text-xs">
                                     <UserPlus className="h-4 w-4" />
                                     Novo Responsável Detectado
                                 </div>
@@ -584,24 +625,24 @@ export default function Interessados() {
                                 ) : (
                                     <div className="space-y-3">
                                         <div className="space-y-1">
-                                            <label className="text-[10px] font-black uppercase opacity-50 px-1">Nome Completo do Pai/Mãe</label>
-                                            <Input 
-                                                placeholder="Nome Completo" 
+                                            <label className="text-xs text-muted-foreground font-medium px-1">Nome Completo do Pai/Mãe</label>
+                                            <Input
+                                                placeholder="Nome Completo"
                                                 value={responsavelNome}
                                                 onChange={(e) => setResponsavelNome(e.target.value)}
-                                                className="h-10 border-none bg-background/50 font-medium"
+                                                className="h-10"
                                             />
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="text-[10px] font-black uppercase opacity-50 px-1">E-mail para Convite</label>
-                                            <Input 
-                                                placeholder="email@exemplo.com" 
+                                            <label className="text-xs text-muted-foreground font-medium px-1">E-mail para Convite</label>
+                                            <Input
+                                                placeholder="email@exemplo.com"
                                                 value={responsavelEmail}
                                                 onChange={(e) => setResponsavelEmail(e.target.value)}
-                                                className="h-10 border-none bg-background/50 font-medium"
+                                                className="h-10"
                                             />
                                         </div>
-                                        <p className="text-[10px] text-muted-foreground italic px-1">
+                                        <p className="text-[10px] text-muted-foreground px-1">
                                             * Criaremos um convite automático para que o responsável acesse o sistema.
                                         </p>
                                     </div>
@@ -609,27 +650,27 @@ export default function Interessados() {
                             </div>
                         )}
 
-                        <label className="flex items-start gap-3 mt-4 text-sm font-semibold text-muted-foreground bg-secondary/30 p-4 rounded-xl border border-border/50 cursor-pointer hover:bg-secondary/50 transition-colors">
-                            <input 
-                                type="checkbox" 
+                        <label className="flex items-start gap-3 mt-4 text-sm font-medium text-muted-foreground bg-muted/30 p-4 rounded-xl border border-border cursor-pointer hover:bg-muted/50 transition-colors">
+                            <input
+                                type="checkbox"
                                 className="mt-1 w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary"
                                 checked={isentarTaxa}
                                 onChange={(e) => setIsentarTaxa(e.target.checked)}
                             />
                             <div>
-                                <span className="text-foreground block mb-0.5">Isentar Taxa de Matrícula</span>
+                                <span className="text-foreground block mb-0.5 font-semibold">Isentar Taxa de Matrícula</span>
                                 <span className="font-normal opacity-70 text-[11px] leading-tight block">
                                     Marque se o aluno já for matriculado em outro projeto ou se possuir bolsa integral.
                                 </span>
                             </div>
                         </label>
 
-                        <DialogFooter className="flex gap-2 mt-6">
-                            <Button variant="outline" onClick={() => setIsConvertDialogOpen(false)} className="flex-1 font-black uppercase italic h-12 rounded-xl">
+                        <DialogFooter className="flex gap-2 mt-5">
+                            <Button variant="outline" onClick={() => setIsConvertDialogOpen(false)} className="flex-1 h-11 rounded-xl">
                                 Cancelar
                             </Button>
-                            <Button 
-                                className="flex-1 bg-green-600 hover:bg-green-700 font-black uppercase italic h-12 rounded-xl"
+                            <Button
+                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 font-semibold h-11 rounded-xl"
                                 onClick={() => {
                                     if (!isExistingResp && (!responsavelNome || !responsavelEmail)) {
                                         toast({
@@ -650,46 +691,46 @@ export default function Interessados() {
                 </DialogContent>
             </Dialog>
 
-            {/* Checkout Link / Resumo Pagamento Dialog */}
-            <Dialog 
-                open={checkoutLinkDialog.open} 
+            {/* Checkout Link Dialog */}
+            <Dialog
+                open={checkoutLinkDialog.open}
                 onOpenChange={(open) => !open && setCheckoutLinkDialog(prev => ({ ...prev, open: false }))}
             >
-                <DialogContent className="max-w-md rounded-2xl border-none shadow-2xl p-0 overflow-hidden">
-                    <div className="h-2 w-full bg-[#E8004F]" />
-                    <div className="p-6 text-center space-y-6">
-                        <div className="mx-auto w-16 h-16 bg-green-100/50 rounded-full flex items-center justify-center mb-2">
-                            <CheckCircle2 className="h-8 w-8 text-green-600" />
+                <DialogContent className="max-w-md rounded-2xl p-0 overflow-hidden">
+                    <div className="h-1.5 w-full bg-primary" />
+                    <div className="p-6 text-center space-y-5">
+                        <div className="mx-auto w-14 h-14 bg-emerald-100 dark:bg-emerald-900/40 rounded-full flex items-center justify-center">
+                            <CheckCircle2 className="h-7 w-7 text-emerald-600" />
                         </div>
-                        
+
                         <div>
-                            <DialogTitle className="text-2xl font-black uppercase tracking-tight text-foreground">
+                            <DialogTitle className="text-xl font-bold text-foreground">
                                 Matrícula Aceita!
                             </DialogTitle>
-                            <DialogDescription className="text-sm font-medium mt-2">
+                            <DialogDescription className="text-sm mt-1.5">
                                 O aluno foi registrado com sucesso. A taxa de matrícula no valor de <strong>R$ 25,00</strong> foi gerada.
                             </DialogDescription>
                         </div>
 
-                        <div className="p-4 bg-muted/30 rounded-2xl border border-primary/10">
+                        <div className="p-4 bg-muted/30 rounded-xl border border-border">
                             {checkoutLinkDialog.loading ? (
                                 <div className="space-y-3">
                                     <Skeleton className="h-8 w-full rounded-xl" />
-                                    <p className="text-xs uppercase font-bold text-muted-foreground animate-pulse">Gerando Link de Pagamento Segura...</p>
+                                    <p className="text-xs text-muted-foreground animate-pulse">Gerando link de pagamento...</p>
                                 </div>
                             ) : checkoutLinkDialog.link ? (
-                                <div className="space-y-4">
-                                    <div className="flex bg-background border rounded-lg p-2 items-center gap-2">
-                                        <Link className="h-4 w-4 text-muted-foreground ml-2" />
-                                        <input 
-                                            readOnly 
-                                            value={checkoutLinkDialog.link} 
-                                            className="bg-transparent border-none flex-1 text-xs outline-none truncate font-mono text-muted-foreground" 
+                                <div className="space-y-3">
+                                    <div className="flex bg-background border border-border rounded-lg p-2 items-center gap-2">
+                                        <Link className="h-4 w-4 text-muted-foreground ml-2 shrink-0" />
+                                        <input
+                                            readOnly
+                                            value={checkoutLinkDialog.link}
+                                            className="bg-transparent border-none flex-1 text-xs outline-none truncate font-mono text-muted-foreground"
                                         />
-                                        <Button 
-                                            size="icon" 
-                                            variant="secondary" 
-                                            className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                                        <Button
+                                            size="icon"
+                                            variant="secondary"
+                                            className="h-8 w-8 shrink-0"
                                             onClick={() => {
                                                 navigator.clipboard.writeText(checkoutLinkDialog.link || "");
                                                 toast({ title: "Link Copiado!" });
@@ -698,14 +739,14 @@ export default function Interessados() {
                                             <Copy className="h-4 w-4" />
                                         </Button>
                                     </div>
-                                    <Button 
-                                        className="w-full bg-[#25D366] hover:bg-[#25D366]/90 text-white font-black uppercase text-xs h-12 rounded-xl shadow-xl shadow-[#25D366]/20 gap-2"
+                                    <Button
+                                        className="w-full bg-[#25D366] hover:bg-[#25D366]/90 text-white font-semibold text-xs h-11 rounded-xl gap-2"
                                         onClick={() => {
                                             const lead = checkoutLinkDialog.leadDetails;
                                             const cleanPhone = lead?.whatsapp?.replace(/\D/g, "");
                                             if (!cleanPhone) return;
                                             const phone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
-                                            const msg = encodeURIComponent(`Olá ${lead.nome_responsavel || lead.nome_completo}! Parabéns, a matrícula de ${lead.nome_completo} foi aprovada no Neo Missio 🎉\n\nPara concluir o ingresso na modalidade de ${lead.atividade_desejada || 'Geral'}, você precisa realizar o pagamento da *Taxa de Matrícula (R$ 25,00)*.\n\nAcesse o link seguro a seguir para pagar via Pix ou Cartão:\n${checkoutLinkDialog.link}\n\nApós o pagamento o acesso ao sistema será liberado automaticamente!`);
+                                            const msg = encodeURIComponent(`Olá ${lead.nome_responsavel || lead.nome_completo}! Parabéns, a matrícula de ${lead.nome_completo} foi aprovada em ${currentUnidade?.nome || 'nossa Unidade'} 🎉\n\nPara concluir o ingresso na modalidade de ${lead.atividade_desejada || 'Geral'}, você precisa realizar o pagamento da *Taxa de Matrícula (R$ 25,00)*.\n\nAcesse o link seguro a seguir para pagar via Pix ou Cartão:\n${checkoutLinkDialog.link}\n\nApós o pagamento o acesso ao sistema será liberado automaticamente!`);
                                             window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
                                             setCheckoutLinkDialog(prev => ({ ...prev, open: false }));
                                         }}
@@ -715,13 +756,78 @@ export default function Interessados() {
                                     </Button>
                                 </div>
                             ) : (
-                                <p className="text-sm font-bold text-destructive">Não foi possível gerar o link de pagamento. Acesse o menu Financeiro.</p>
+                                <p className="text-sm font-medium text-destructive">Não foi possível gerar o link de pagamento. Acesse o menu Financeiro.</p>
                             )}
                         </div>
-                        
-                        <Button variant="ghost" className="w-full uppercase text-[10px] font-bold" onClick={() => setCheckoutLinkDialog(prev => ({ ...prev, open: false }))}>
+
+                        <Button variant="ghost" className="w-full text-xs font-medium" onClick={() => setCheckoutLinkDialog(prev => ({ ...prev, open: false }))}>
                             Fechar e Continuar
                         </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Completar Ficha Dialog */}
+            <Dialog open={completarFichaOpen} onOpenChange={(open) => {
+                setCompletarFichaOpen(open);
+                if (!open) { setFichaLead(null); setFichaData({ escola: "", serie_ano: "", cpf_responsavel: "" }); }
+            }}>
+                <DialogContent className="max-w-md rounded-2xl overflow-hidden p-0">
+                    <div className="h-1.5 w-full bg-blue-500" />
+                    <div className="p-6 space-y-5">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-bold flex items-center gap-3">
+                                <School className="h-5 w-5 text-blue-500" />
+                                Completar <span className="text-blue-500">Ficha</span>
+                            </DialogTitle>
+                            <DialogDescription>
+                                Preencha os dados complementares de <strong>{fichaLead?.nome_completo}</strong> para avançar para "Ficha Completa".
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="space-y-3">
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground font-medium px-1">Escola de Origem</label>
+                                <Input
+                                    placeholder="Ex: E.E. João da Silva"
+                                    value={fichaData.escola}
+                                    onChange={(e) => setFichaData(prev => ({ ...prev, escola: e.target.value }))}
+                                    className="h-10"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground font-medium px-1">Série / Ano</label>
+                                <Input
+                                    placeholder="Ex: 5º ano, 2º EM"
+                                    value={fichaData.serie_ano}
+                                    onChange={(e) => setFichaData(prev => ({ ...prev, serie_ano: e.target.value }))}
+                                    className="h-10"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground font-medium px-1">CPF do Responsável</label>
+                                <Input
+                                    placeholder="000.000.000-00"
+                                    value={fichaData.cpf_responsavel}
+                                    onChange={(e) => setFichaData(prev => ({ ...prev, cpf_responsavel: e.target.value }))}
+                                    className="h-10"
+                                />
+                            </div>
+                        </div>
+
+                        <DialogFooter className="flex gap-2">
+                            <Button variant="outline" onClick={() => setCompletarFichaOpen(false)} className="flex-1 font-semibold h-11 rounded-xl">
+                                Cancelar
+                            </Button>
+                            <Button
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 font-semibold h-11 rounded-xl"
+                                disabled={completarFichaMutation.isPending}
+                                onClick={() => completarFichaMutation.mutate({ id: fichaLead.id, ...fichaData })}
+                            >
+                                {completarFichaMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                Avançar para Ficha Completa
+                            </Button>
+                        </DialogFooter>
                     </div>
                 </DialogContent>
             </Dialog>

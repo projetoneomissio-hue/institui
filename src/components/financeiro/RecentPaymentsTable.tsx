@@ -47,7 +47,7 @@ export const RecentPaymentsTable = () => {
                                     R$ {parseFloat(pagamento.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                                 </td>
                                 <td className="p-4 align-middle text-center">
-                                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
                                         Pago
                                     </span>
                                 </td>
@@ -84,17 +84,17 @@ export const RecentPaymentsTable = () => {
             {/* Mobile Card View */}
             <div className="md:hidden space-y-3">
                 {ultimosPagamentos.map((pagamento: any) => (
-                    <div key={pagamento.id} className="p-4 rounded-xl border border-primary/10 bg-card/30 backdrop-blur-sm space-y-3">
+                    <div key={pagamento.id} className="p-4 rounded-xl border border-border bg-card space-y-3">
                         <div className="flex justify-between items-start">
                             <div>
                                 <h4 className="font-bold text-foreground text-sm leading-tight">
                                     {pagamento.matricula?.aluno?.nome_completo || "Desconhecido"}
                                 </h4>
-                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1">
+                                <p className="text-[10px] text-muted-foreground mt-1">
                                     {pagamento.matricula?.turma?.atividade?.nome || "-"}
                                 </p>
                             </div>
-                            <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase tracking-tighter bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                            <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[8px] font-medium uppercase bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
                                 Pago
                             </span>
                         </div>
@@ -106,7 +106,7 @@ export const RecentPaymentsTable = () => {
                                         ? new Date(pagamento.data_pagamento).toLocaleDateString("pt-BR", { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
                                         : "-"}
                                 </p>
-                                <p className="text-base font-black text-emerald-500">
+                                <p className="text-base font-bold text-emerald-500">
                                     R$ {parseFloat(pagamento.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                                 </p>
                             </div>

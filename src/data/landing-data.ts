@@ -1,15 +1,4 @@
-import { LucideIcon, BookOpen, Music, Trophy, Activity, Heart, Users, Sparkles, Palette } from "lucide-react";
-import jiujitsuImage from "@/assets/jiujitsu-activity.jpg";
-import musicImage from "@/assets/music-activity.jpg";
-import educationImage from "@/assets/education-activity.jpg";
-import pilatesImage from "@/assets/pilates-activity.jpg";
-import volleyballImage from "@/assets/volleyball-activity.jpg";
-import balletImage from "@/assets/ballet-activity.jpg";
-import drawingImage from "@/assets/drawing-activity.jpg";
-import englishImage from "@/assets/english-activity.jpg";
-import cordasAmorImage from "@/assets/cordas-amor-activity.jpg";
-import womenCounselingImage from "@/assets/women-counseling-activity.jpg";
-import menCounselingImage from "@/assets/men-counseling-activity.jpg";
+import { LucideIcon, BookOpen, Music, Trophy, Activity, Heart, Users, Sparkles, Palette, Star, Scissors } from "lucide-react";
 import testimonialMaria from "@/assets/testimonial-maria.jpg";
 import testimonialLucas from "@/assets/testimonial-lucas.jpg";
 import testimonialCarlos from "@/assets/testimonial-carlos.jpg";
@@ -19,6 +8,7 @@ export interface ActivityItem {
     title: string;
     description: string;
     price: string;
+    priceNote?: string;
     frequency: string;
     schedule: string;
     targetAudience: string;
@@ -26,6 +16,8 @@ export interface ActivityItem {
     image: string;
     icon: LucideIcon;
     gradient: string;
+    waitlist?: boolean;
+    free?: boolean;
 }
 
 export interface TestimonialItem {
@@ -35,144 +27,234 @@ export interface TestimonialItem {
     feedback: string;
 }
 
+export const ICON_OPTIONS = [
+    { name: "Palette", icon: Palette, label: "Arte" },
+    { name: "BookOpen", icon: BookOpen, label: "Educação" },
+    { name: "Music", icon: Music, label: "Música" },
+    { name: "Trophy", icon: Trophy, label: "Esporte" },
+    { name: "Activity", icon: Activity, label: "Fitness" },
+    { name: "Heart", icon: Heart, label: "Saúde" },
+    { name: "Users", icon: Users, label: "Grupo" },
+    { name: "Sparkles", icon: Sparkles, label: "Arte/Dança" },
+    { name: "Star", icon: Star, label: "Destaque" },
+    { name: "Scissors", icon: Scissors, label: "Artesanato" },
+] as const;
+
+export const GRADIENT_OPTIONS = [
+    { value: "from-indigo-500 to-purple-500", label: "Índigo" },
+    { value: "from-blue-500 to-cyan-500", label: "Azul" },
+    { value: "from-yellow-500 to-amber-500", label: "Amarelo" },
+    { value: "from-pink-500 to-rose-500", label: "Rosa" },
+    { value: "from-red-500 to-orange-500", label: "Vermelho" },
+    { value: "from-orange-600 to-red-600", label: "Laranja" },
+    { value: "from-teal-500 to-emerald-500", label: "Verde-água" },
+    { value: "from-orange-500 to-yellow-500", label: "Laranja Claro" },
+    { value: "from-violet-500 to-purple-500", label: "Violeta" },
+    { value: "from-purple-500 to-pink-500", label: "Roxo" },
+    { value: "from-fuchsia-500 to-pink-500", label: "Fúcsia" },
+    { value: "from-rose-500 to-pink-500", label: "Rosa Escuro" },
+    { value: "from-blue-400 to-indigo-500", label: "Azul Claro" },
+    { value: "from-rose-400 to-pink-500", label: "Rosa Suave" },
+    { value: "from-amber-400 to-yellow-500", label: "Âmbar" },
+    { value: "from-green-500 to-emerald-600", label: "Verde" },
+];
+
+export const getIconByName = (name: string): LucideIcon => {
+    const found = ICON_OPTIONS.find(o => o.name === name);
+    return found?.icon ?? Activity;
+};
+
 export const activities: ActivityItem[] = [
     {
         id: "desenho",
         title: "Aulas de Desenho",
-        description: "Técnicas de desenho incluindo animes, cartoons, realismo, anatomia humana, sombras, perspectivas e expressões.",
+        description: "Técnicas de desenho incluindo animes, cartoons, realismo, anatomia humana, sombras, perspectivas e expressões. Para crianças e adultos.",
         price: "R$ 60,00/mês",
         frequency: "1x por semana",
-        schedule: "Quartas-feiras, 19:00-20:00",
-        targetAudience: "7-12 anos",
-        note: "Criança deve trazer caderno, lápis, borracha, lápis de cor, giz e outros materiais conforme o professor pedir.",
-        image: drawingImage,
+        schedule: "Quartas-feiras | 19h às 20h",
+        targetAudience: "Crianças e adultos",
+        note: "Trazer caderno, lápis, borracha, lápis de cor, giz e demais materiais conforme orientação do professor.",
+        image: "",
         icon: Palette,
         gradient: "from-indigo-500 to-purple-500"
     },
     {
         id: "ingles",
         title: "Aulas de Inglês",
-        description: "Aulas de inglês utilizando material cristão, ensinando a língua de forma divertida e interativa.",
+        description: "Aulas de inglês com material cristão, ensino dinâmico e interativo. Turma Basic para 7-12 anos; Basic 1 com vagas abertas aos sábados.",
         price: "R$ 60,00/mês",
+        priceNote: "Material didático semestral: R$ 100,00",
         frequency: "1x por semana",
-        schedule: "Basic (7-12 anos): Sábados 9:00-11:00 | Basic 1 e 2: Segundas (fila de espera)",
-        targetAudience: "Crianças e adolescentes de 7-15 anos",
-        note: "Material didático semestral: R$ 100,00",
-        image: englishImage,
+        schedule: "Basic (7-12 anos): Sábados | 9h às 11h\nBasic 1 (10-12 anos): Segundas-feiras",
+        targetAudience: "7 a 12 anos",
+        image: "",
         icon: BookOpen,
-        gradient: "from-blue-500 to-cyan-500"
+        gradient: "from-blue-500 to-cyan-500",
+        waitlist: true
     },
     {
-        id: "jiu-jitsu",
-        title: "Jiu-Jitsu",
-        description: "Aulas de Jiu-Jitsu para todas as idades, ministradas por instrutor faixa preta com vasta experiência.",
+        id: "musica",
+        title: "Música – Violão e Teclado",
+        description: "Aulas de violão e teclado com foco em teoria musical e prática. Horários definidos diretamente com o professor conforme disponibilidade.",
         price: "R$ 100,00/mês",
-        frequency: "2x por semana",
-        schedule: "Segunda e Quarta: Turma Infantil 18:30 | Adultos 19:30-21:00",
-        targetAudience: "A partir de 5 anos até adultos",
-        note: "Quimono não incluso.",
-        image: jiujitsuImage,
-        icon: Trophy,
-        gradient: "from-red-500 to-orange-500"
-    },
-    {
-        id: "violao",
-        title: "Aulas de Violão",
-        description: "Aulas de violão para iniciantes e intermediários com teoria musical e prática.",
-        price: "R$ 80,00/mês",
+        priceNote: "Apostila semestral: R$ 25,00",
         frequency: "1x por semana",
-        schedule: "Quartas-feiras: Turma 1 17:00-18:00 | Turma 2 18:00-19:00",
+        schedule: "Teclado: Sábados (manhã)\nViolão: Sábados (manhã) e Terças-feiras (noite)",
         targetAudience: "A partir de 10 anos",
-        note: "Aluno deve trazer seu próprio violão.",
-        image: musicImage,
+        note: "Necessário possuir instrumento.",
+        image: "",
         icon: Music,
         gradient: "from-yellow-500 to-amber-500"
     },
     {
         id: "ballet",
         title: "Ballet Infantil",
-        description: "Aulas de ballet clássico para crianças, desenvolvendo coordenação, postura e expressão artística.",
-        price: "R$ 80,00/mês",
+        description: "Ballet clássico que desenvolve coordenação, postura, expressão artística e disciplina desde a primeira infância.",
+        price: "R$ 60,00/mês",
         frequency: "1x por semana",
-        schedule: "Sábados: Baby Class (3-5a) 9:00-10:00 | Preparatório (6-8a) 10:00-11:00 | Intermediário (9-13a) 11:00-12:00",
-        targetAudience: "3 a 13 anos",
-        note: "Uniforme: collant, meia calça e sapatilha (não inclusos na mensalidade).",
-        image: balletImage,
+        schedule: "4 a 6 anos: Sábados | 10h30 às 11h30\n7 a 10 anos: Sábados | 9h30 às 10h30",
+        targetAudience: "4 a 10 anos",
+        image: "",
         icon: Sparkles,
         gradient: "from-pink-500 to-rose-500"
     },
     {
-        id: "pilates",
-        title: "Pilates",
-        description: "Aulas de Pilates para adultos, focando em fortalecimento, flexibilidade e bem-estar.",
-        price: "R$ 80,00/mês",
+        id: "jiu-jitsu",
+        title: "Jiu-Jitsu",
+        description: "Arte marcial completa ministrada por faixa preta experiente. Turmas separadas por faixa etária garantindo o melhor desenvolvimento.",
+        price: "Infantil: R$ 70,00 | Adulto: R$ 100,00/mês",
         frequency: "2x por semana",
-        schedule: "Segundas e Quartas: 08:30-09:20",
+        schedule: "Infantil – Ter e Qui:\n• 4-6a: 18h30-19h15 | • 7-9a: 19h15-20h | • 10-14a: 20h-21h\nAdulto – Seg e Qua: 19h30 às 21h",
+        targetAudience: "A partir de 4 anos",
+        note: "Quimono não incluso.",
+        image: "",
+        icon: Trophy,
+        gradient: "from-red-500 to-orange-500"
+    },
+    {
+        id: "judo",
+        title: "Judô",
+        description: "Arte marcial japonesa que ensina respeito, autocontrole e disciplina. Ideal para crianças em fase de desenvolvimento motor e social.",
+        price: "R$ 60,00/mês",
+        frequency: "1x por semana",
+        schedule: "Sábados | 11h às 12h",
+        targetAudience: "4 a 14 anos",
+        image: "",
+        icon: Trophy,
+        gradient: "from-orange-600 to-red-600"
+    },
+    {
+        id: "pilates",
+        title: "Pilates Solo",
+        description: "Pilates para adultos com foco em fortalecimento do core, flexibilidade, postura e bem-estar físico e mental.",
+        price: "R$ 100,00/mês",
+        frequency: "2x por semana",
+        schedule: "Terças e Quintas | 13h30 às 14h30",
         targetAudience: "Adultos (a partir de 18 anos)",
-        image: pilatesImage,
+        image: "",
         icon: Activity,
         gradient: "from-teal-500 to-emerald-500"
     },
     {
         id: "volei",
         title: "Vôlei",
-        description: "Aulas de vôlei para crianças e adolescentes com foco em técnica, tática e espírito de equipe.",
+        description: "Aulas de vôlei com foco em técnica, tática e espírito de equipe. Turmas separadas por faixa etária para melhor aprendizado.",
         price: "R$ 60,00/mês",
         frequency: "1x por semana",
-        schedule: "Sábados, 14:00-16:00",
-        targetAudience: "8 a 14 anos",
-        image: volleyballImage,
+        schedule: "Sábados:\n• Adulto: 8h20-9h20 | • Juvenil (12-15a): 9h20-10h20 | • Infantil (8-11a): 10h20-11h20",
+        targetAudience: "8 anos em diante",
+        image: "",
         icon: Trophy,
         gradient: "from-orange-500 to-yellow-500"
     },
     {
         id: "reforco",
         title: "Reforço Escolar",
-        description: "Acompanhamento educacional e reforço em matérias escolares para crianças e adolescentes.",
-        price: "R$ 60,00/mês",
-        frequency: "1x por semana",
-        schedule: "Quartas-feiras: 14:00-15:30",
-        targetAudience: "6-15 anos",
-        image: educationImage,
+        description: "Acompanhamento pedagógico personalizado para ajudar crianças e adolescentes a superar dificuldades e avançar nas matérias escolares.",
+        price: "R$ 50,00/mês",
+        frequency: "A combinar",
+        schedule: "Horários definidos diretamente com o professor",
+        targetAudience: "6 a 15 anos",
+        image: "",
         icon: BookOpen,
         gradient: "from-violet-500 to-purple-500"
     },
     {
-        id: "violin",
-        title: "Cordas do Amor",
-        description: "Aulas de violino para crianças e adolescentes, com acompanhamento de teoria musical.",
-        price: "R$ 80,00/mês",
+        id: "crochet",
+        title: "Aulas de Crochê",
+        description: "Aprenda a arte do crochê do zero ou aprimore suas técnicas. Uma atividade manual que relaxa, conecta pessoas e gera renda.",
+        price: "R$ 60,00/mês",
         frequency: "1x por semana",
-        schedule: "Quintas-feiras: Turma 1 17:00-18:00 | Turma 2 18:00-19:00",
-        targetAudience: "7-15 anos",
-        image: cordasAmorImage,
+        schedule: "Toda Terça-feira | 15h",
+        targetAudience: "Adultos",
+        image: "",
+        icon: Scissors,
+        gradient: "from-purple-500 to-pink-500"
+    },
+    {
+        id: "danca",
+        title: "Dança de Salão e Ritmos",
+        description: "Aulas de dança de salão e outros ritmos para iniciantes e intermediários. Pode vir sozinho(a) ou em casal — todos são bem-vindos!",
+        price: "Individual: R$ 60,00 | Casal: R$ 100,00/mês",
+        frequency: "1x por semana",
+        schedule: "Todas as Segundas-feiras | 19h30",
+        targetAudience: "Adultos",
+        image: "",
         icon: Music,
-        gradient: "from-amber-500 to-red-500"
+        gradient: "from-fuchsia-500 to-pink-500"
     },
     {
-        id: "terapia-feminino",
-        title: "Aconselhamento Feminino",
-        description: "Grupo de apoio e aconselhamento voltado para mulheres, trabalhando questões emocionais e espirituais.",
-        price: "Gratuito",
-        frequency: "1x por semana",
-        schedule: "Quintas-feiras: 19:00-21:00",
-        targetAudience: "Mulheres adultas",
-        image: womenCounselingImage,
+        id: "escuta-terapeutica",
+        title: "Escuta Terapêutica Cristã",
+        description: "Atendimento terapêutico individual com base em valores cristãos. Presencial ou online. Cuide da sua saúde emocional com suporte especializado.",
+        price: "Investimento: R$ 70,00/mês",
+        priceNote: "Manutenção mensal: R$ 25,00",
+        frequency: "Semanal",
+        schedule: "Presencial ou on-line (híbrido)\nHorários a combinar",
+        targetAudience: "Adultos",
+        image: "",
         icon: Heart,
-        gradient: "from-rose-400 to-pink-500"
+        gradient: "from-rose-500 to-pink-500"
     },
     {
-        id: "terapia-masculino",
-        title: "Aconselhamento Masculino",
-        description: "Grupo de apoio e mentoria para homens, focando em liderança, paternidade e desenvolvimento pessoal.",
+        id: "aconselhamento-homens",
+        title: "Aconselhamento – Homens",
+        description: "Espaço de encorajamento ao crescimento emocional e espiritual com base em valores cristãos. 4 sessões presenciais, 1 hora por semana.",
         price: "Gratuito",
         frequency: "1x por semana",
-        schedule: "Terças-feiras: 19:30-21:00",
+        schedule: "Conforme agenda",
         targetAudience: "Homens adultos",
-        image: menCounselingImage,
+        image: "",
         icon: Users,
-        gradient: "from-blue-400 to-indigo-500"
-    }
+        gradient: "from-blue-400 to-indigo-500",
+        free: true
+    },
+    {
+        id: "tecendo-afetos",
+        title: "Tecendo Afetos",
+        description: "Grupo de mulheres que gostam de tricô, reunidas para tecer peças lindas para doação. Transformam linhas em carinho e solidariedade.",
+        price: "Gratuito",
+        frequency: "1x por semana",
+        schedule: "Toda Segunda-feira | 15h às 17h",
+        targetAudience: "Mulheres",
+        image: "",
+        icon: Heart,
+        gradient: "from-rose-400 to-pink-500",
+        free: true
+    },
+    {
+        id: "serie-alpha",
+        title: "Série Alpha",
+        description: "Existe mais na vida do que simplesmente viver. Uma série de encontros com roda de conversa sobre o sentido da vida. Ambiente acolhedor e sem julgamentos.",
+        price: "Gratuito",
+        frequency: "Semanal",
+        schedule: "Segundas-feiras | 19h30",
+        targetAudience: "Todos",
+        image: "",
+        icon: Star,
+        gradient: "from-amber-400 to-yellow-500",
+        free: true
+    },
 ];
 
 export const testimonials: TestimonialItem[] = [
@@ -180,7 +262,7 @@ export const testimonials: TestimonialItem[] = [
         name: "Maria Aparecida",
         role: "Mãe da Ana (Ballet)",
         photo: testimonialMaria,
-        feedback: "O Neo Missio transformou a vida da minha filha. O ballet trouxe disciplina, confiança e alegria. Os professores são incríveis e o ambiente é acolhedor!"
+        feedback: "A instituição transformou a vida da minha filha. O ballet trouxe disciplina, confiança e alegria. Os professores são incríveis e o ambiente é acolhedor!"
     },
     {
         name: "Lucas Ferreira",
@@ -192,6 +274,6 @@ export const testimonials: TestimonialItem[] = [
         name: "Carlos Roberto",
         role: "Pai do Pedro",
         photo: testimonialCarlos,
-        feedback: "Meu filho participa do vôlei e das aulas de desenho. Ver ele feliz e desenvolvendo suas habilidades não tem preço. O Neo Missio é uma bênção para nossa comunidade!"
+        feedback: "Meu filho participa do vôlei e das aulas de desenho. Ver ele feliz e desenvolvendo suas habilidades não tem preço. Este centro é uma bênção para nossa comunidade!"
     }
 ];

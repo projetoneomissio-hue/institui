@@ -1,7 +1,6 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { DollarSign, TrendingUp, User, Heart } from "lucide-react";
+import { DollarSign, TrendingUp, User, Heart, Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -115,14 +114,10 @@ const Comissoes = () => {
           });
         }
 
-        // Check if payment was made (simplified - assuming current month is pending)
-        const isPaid = i > 0;
-
         history.push({
           mes: format(date, "MMMM yyyy", { locale: ptBR }),
           totalAlunos: monthAlunos,
           total: monthTotal,
-          status: isPaid ? "pago" : "pendente",
           percentual: professor.percentual_comissao,
         });
       }
@@ -197,9 +192,18 @@ const Comissoes = () => {
     <DashboardLayout>
       <div className="p-6 lg:p-8 space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Minhas Comissões</h1>
-          <p className="text-muted-foreground mt-1">
-            Professores Parceiro (Variável)
+          <h1 className="text-2xl font-bold text-foreground">Minhas Comissões</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Professor Parceiro · remuneração variável por aluno
+          </p>
+        </div>
+
+        <div className="flex items-start gap-3 p-4 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/20 text-sm text-amber-800 dark:text-amber-300">
+          <Info className="h-4 w-4 mt-0.5 shrink-0" />
+          <p>
+            Os valores abaixo são calculados com base nos alunos ativos nas suas turmas.
+            O pagamento é processado pela escola após o recebimento das mensalidades dos alunos.
+            Consulte a direção para confirmar datas de repasse.
           </p>
         </div>
 
@@ -256,18 +260,14 @@ const Comissoes = () => {
                     <div>
                       <h3 className="font-semibold capitalize">{item.mes}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {item.totalAlunos} alunos × {item.percentual}%
+                        {item.totalAlunos} aluno{item.totalAlunos !== 1 ? "s" : ""} × {item.percentual}%
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-bold">
                         R$ {item.total.toFixed(2).replace(".", ",")}
                       </p>
-                      <Badge
-                        variant={item.status === "pago" ? "default" : "secondary"}
-                      >
-                        {item.status}
-                      </Badge>
+                      <p className="text-xs text-muted-foreground mt-0.5">calculado</p>
                     </div>
                   </div>
                 ))}

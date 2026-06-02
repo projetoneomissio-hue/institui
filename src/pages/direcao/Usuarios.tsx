@@ -194,7 +194,7 @@ const Usuarios = () => {
                             <Badge variant="destructive">Sem Acesso</Badge>
                           ) : (
                             user.roles.map(role => (
-                              <Badge key={`badge-${role}`} variant="secondary" className="text-[10px] uppercase tracking-wider font-bold">
+                              <Badge key={`badge-${role}`} variant="secondary" className="text-[10px] uppercase tracking-wide font-medium">
                                 {roleLabels[role]}
                               </Badge>
                             ))
@@ -204,8 +204,8 @@ const Usuarios = () => {
                       <p className="text-sm text-muted-foreground">{user.email}</p>
                     </div>
 
-                    <div className="flex flex-col gap-3 min-w-[200px] p-4 bg-background/50 rounded-lg border border-white/5">
-                      <span className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-1">Papéis Atribuídos</span>
+                    <div className="flex flex-col gap-3 min-w-[200px] p-4 bg-muted/30 rounded-lg border border-border">
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">Papéis Atribuídos</span>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {allRoles.map(role => (
                           <div key={`check-${role}`} className="flex items-center space-x-2">

@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { handleError } from "@/utils/error-handler";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUnidade } from "@/contexts/UnidadeContext";
 import { Loader2, Shield, Download, Copy, Check } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -24,6 +25,8 @@ export default function MfaSetup() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { currentUnidade } = useUnidade();
+  const unitName = currentUnidade?.nome || "Zafen";
 
   useEffect(() => {
     if (!user) {
@@ -47,7 +50,7 @@ export default function MfaSetup() {
     try {
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: "totp",
-        friendlyName: "Neo Missio MFA",
+        friendlyName: `${unitName} MFA`,
       });
 
       if (error) throw error;
@@ -136,7 +139,7 @@ export default function MfaSetup() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "neo-missio-recovery-codes.txt";
+    a.download = `${unitName.toLowerCase().replace(/\s+/g, '-')}-recovery-codes.txt`;
     a.click();
     URL.revokeObjectURL(url);
 

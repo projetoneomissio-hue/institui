@@ -100,7 +100,7 @@ const TurmaStudentGrid = ({ turmaId }: { turmaId: string }) => {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center bg-muted/5 rounded-xl border border-dashed border-primary/10 m-4">
          <Users className="h-8 w-8 text-muted-foreground mb-2 opacity-20" />
-         <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Nenhuma matrícula nesta turma</p>
+         <p className="text-xs text-muted-foreground">Nenhuma matrícula nesta turma</p>
       </div>
     );
   }
@@ -108,7 +108,7 @@ const TurmaStudentGrid = ({ turmaId }: { turmaId: string }) => {
   return (
     <div className="space-y-4 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
       <div className="flex items-center justify-between border-b pb-1 border-primary/5">
-         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Alunos Matriculados ({matriculasAtivas.length} Ativos)</span>
+         <span className="text-[10px] font-medium uppercase text-muted-foreground">Alunos Matriculados ({matriculasAtivas.length} Ativos)</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {[...matriculas].sort((a, b) => (a.aluno?.nome_completo || "").localeCompare(b.aluno?.nome_completo || "")).map((m: any) => {
@@ -119,16 +119,16 @@ const TurmaStudentGrid = ({ turmaId }: { turmaId: string }) => {
           return (
             <div key={m.id} className="flex items-center justify-between p-2.5 rounded-xl bg-background/40 border border-primary/5 hover:border-primary/20 transition-all group/student shadow-sm">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-black text-[10px] border border-primary/10">
+                <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-semibold text-[10px] border border-primary/10">
                   {m.aluno.nome_completo.substring(0, 2).toUpperCase()}
                 </div>
                 <div className="truncate">
                   <p className="text-[11px] font-bold text-foreground truncate">{m.aluno.nome_completo}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     {m.status === 'ativa' ? (
-                      <span className="text-[8px] font-black uppercase text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded-full">Ativo</span>
+                      <span className="text-[8px] font-medium uppercase text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded-full">Ativo</span>
                     ) : (
-                      <span className="text-[8px] font-black uppercase text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">{m.status}</span>
+                      <span className="text-[8px] font-medium uppercase text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">{m.status}</span>
                     )}
                     {health?.alergias && <span title={`Alergia: ${health.alergias}`} className="text-xs">🧪</span>}
                     {health?.is_pne && <span title={`PNE: ${health.pne_cid || 'Não inf.'}`} className="text-xs">🏷️</span>}
@@ -347,7 +347,7 @@ const Turmas = () => {
       <div className="p-8 space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-4xl font-black text-foreground tracking-tight">Turmas</h1>
+            <h1 className="text-2xl font-bold text-foreground">Turmas</h1>
             <p className="text-muted-foreground mt-1 text-base">
               Gerencie as turmas e horários das atividades
             </p>
@@ -444,7 +444,7 @@ const Turmas = () => {
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div className="space-y-1.5">
-                          <CardTitle className="text-xl font-black">{turma.nome}</CardTitle>
+                          <CardTitle className="text-xl font-semibold">{turma.nome}</CardTitle>
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="text-[10px] uppercase font-bold bg-primary/5 border-none">
                               {turma.atividade?.nome}
@@ -478,7 +478,7 @@ const Turmas = () => {
                       </div>
 
                       <div className="space-y-2.5">
-                        <div className="flex items-center justify-between text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
+                        <div className="flex items-center justify-between text-[10px] uppercase text-muted-foreground">
                           <span>Ocupação</span>
                           <span className={cn(
                             "text-xs transition-colors",
@@ -543,15 +543,15 @@ const Turmas = () => {
               })}
             </div>
           ) : (
-            <div className="rounded-2xl border border-primary/10 overflow-hidden bg-card/30 backdrop-blur-sm shadow-xl">
+            <div className="rounded-xl border border-border overflow-hidden">
               <table className="w-full text-left border-collapse">
                 <thead className="bg-muted/30">
                   <tr>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Turma / Atividade</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Horários & Dias</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ocupação</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Professor</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right">Ações</th>
+                    <th className="px-6 py-4 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Turma / Atividade</th>
+                    <th className="px-6 py-4 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Horários & Dias</th>
+                    <th className="px-6 py-4 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Ocupação</th>
+                    <th className="px-6 py-4 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Professor</th>
+                    <th className="px-6 py-4 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-primary/5">
@@ -570,7 +570,7 @@ const Turmas = () => {
                         >
                           <td className="px-6 py-4">
                             <div className="flex flex-col">
-                              <span className="font-black text-sm text-foreground">{turma.nome}</span>
+                              <span className="font-semibold text-sm text-foreground">{turma.nome}</span>
                               <span className="text-[10px] text-primary/60 font-bold uppercase">{turma.atividade?.nome}</span>
                             </div>
                           </td>
@@ -652,19 +652,16 @@ const Turmas = () => {
 
         {/* Dialog para criar/editar */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="sm:max-w-[600px] max-h-[90vh] p-0 bg-background/95 backdrop-blur-xl border border-primary/10 shadow-2xl overflow-hidden flex flex-col">
-            <div className="relative shrink-0 h-20 bg-gradient-to-r from-neomissio-primary/10 to-primary/5 flex items-center px-6 z-10 border-b border-white/5">
-              <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:16px_16px]" />
-              <div className="relative">
-                <DialogTitle className="text-2xl font-bold text-white tracking-tight">
-                  {editingTurma ? "Editar Turma" : "Nova Turma"}
-                </DialogTitle>
-                <DialogDescription className="text-muted-foreground text-xs mt-1">
-                  {editingTurma
-                    ? "Atualize as informações da turma."
-                    : "Preencha os dados para criar uma nova turma."}
-                </DialogDescription>
-              </div>
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] p-0 overflow-hidden flex flex-col">
+            <div className="shrink-0 px-6 pt-6 pb-4 border-b border-border">
+              <DialogTitle className="text-xl font-bold text-foreground">
+                {editingTurma ? "Editar Turma" : "Nova Turma"}
+              </DialogTitle>
+              <DialogDescription className="text-sm mt-1">
+                {editingTurma
+                  ? "Atualize as informações da turma."
+                  : "Preencha os dados para criar uma nova turma."}
+              </DialogDescription>
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col space-y-4">

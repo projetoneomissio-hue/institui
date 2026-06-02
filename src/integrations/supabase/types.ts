@@ -119,9 +119,12 @@ export type Database = {
           doenca_cronica: string | null
           id: string
           is_pne: boolean | null
+          laudo_url: string | null
           medicamentos: string | null
           observacoes: string | null
+          pne_cid: string | null
           pne_descricao: string | null
+          tem_laudo: boolean | null
           tipo_sanguineo: string | null
           updated_at: string
         }
@@ -136,9 +139,12 @@ export type Database = {
           doenca_cronica?: string | null
           id?: string
           is_pne?: boolean | null
+          laudo_url?: string | null
           medicamentos?: string | null
           observacoes?: string | null
+          pne_cid?: string | null
           pne_descricao?: string | null
+          tem_laudo?: boolean | null
           tipo_sanguineo?: string | null
           updated_at?: string
         }
@@ -153,9 +159,12 @@ export type Database = {
           doenca_cronica?: string | null
           id?: string
           is_pne?: boolean | null
+          laudo_url?: string | null
           medicamentos?: string | null
           observacoes?: string | null
+          pne_cid?: string | null
           pne_descricao?: string | null
+          tem_laudo?: boolean | null
           tipo_sanguineo?: string | null
           updated_at?: string
         }
@@ -695,6 +704,7 @@ export type Database = {
           id: string
           nome: string
           salario: number
+          unidade_id: string
           updated_at: string
         }
         Insert: {
@@ -704,6 +714,7 @@ export type Database = {
           id?: string
           nome: string
           salario: number
+          unidade_id?: string
           updated_at?: string
         }
         Update: {
@@ -713,9 +724,18 @@ export type Database = {
           id?: string
           nome?: string
           salario?: number
+          unidade_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "funcionarios_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invitations: {
         Row: {
@@ -724,6 +744,7 @@ export type Database = {
           email: string
           expires_at: string
           id: string
+          metadata: Json | null
           role: Database["public"]["Enums"]["app_role"]
           token: string
           updated_at: string
@@ -735,6 +756,7 @@ export type Database = {
           email: string
           expires_at: string
           id?: string
+          metadata?: Json | null
           role: Database["public"]["Enums"]["app_role"]
           token: string
           updated_at?: string
@@ -746,6 +768,7 @@ export type Database = {
           email?: string
           expires_at?: string
           id?: string
+          metadata?: Json | null
           role?: Database["public"]["Enums"]["app_role"]
           token?: string
           updated_at?: string
@@ -764,6 +787,7 @@ export type Database = {
           observacoes: string | null
           responsavel_nome: string
           responsavel_telefone: string | null
+          unidade_id: string
           updated_at: string
           valor: number
         }
@@ -777,6 +801,7 @@ export type Database = {
           observacoes?: string | null
           responsavel_nome: string
           responsavel_telefone?: string | null
+          unidade_id?: string
           updated_at?: string
           valor: number
         }
@@ -790,10 +815,19 @@ export type Database = {
           observacoes?: string | null
           responsavel_nome?: string
           responsavel_telefone?: string | null
+          unidade_id?: string
           updated_at?: string
           valor?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "locacoes_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       matriculas: {
         Row: {
@@ -964,6 +998,7 @@ export type Database = {
           data_pagamento: string | null
           data_vencimento: string
           forma_pagamento: string | null
+          gateway_id: string | null
           gateway_provider: string | null
           gateway_url: string | null
           id: string
@@ -972,6 +1007,7 @@ export type Database = {
           referencia: string | null
           status: Database["public"]["Enums"]["status_pagamento"]
           ultimo_aviso_data: string | null
+          ultimo_lembrete: string | null
           unidade_id: string
           updated_at: string
           valor: number
@@ -981,6 +1017,7 @@ export type Database = {
           data_pagamento?: string | null
           data_vencimento: string
           forma_pagamento?: string | null
+          gateway_id?: string | null
           gateway_provider?: string | null
           gateway_url?: string | null
           id?: string
@@ -989,6 +1026,7 @@ export type Database = {
           referencia?: string | null
           status?: Database["public"]["Enums"]["status_pagamento"]
           ultimo_aviso_data?: string | null
+          ultimo_lembrete?: string | null
           unidade_id?: string
           updated_at?: string
           valor: number
@@ -998,6 +1036,7 @@ export type Database = {
           data_pagamento?: string | null
           data_vencimento?: string
           forma_pagamento?: string | null
+          gateway_id?: string | null
           gateway_provider?: string | null
           gateway_url?: string | null
           id?: string
@@ -1006,6 +1045,7 @@ export type Database = {
           referencia?: string | null
           status?: Database["public"]["Enums"]["status_pagamento"]
           ultimo_aviso_data?: string | null
+          ultimo_lembrete?: string | null
           unidade_id?: string
           updated_at?: string
           valor?: number
@@ -1114,7 +1154,9 @@ export type Database = {
           avatar_url: string | null
           codigo_indicacao: string | null
           convidado_por: string | null
+          cpf: string | null
           created_at: string
+          data_nascimento: string | null
           email: string
           id: string
           nivel_ensino: string | null
@@ -1127,7 +1169,9 @@ export type Database = {
           avatar_url?: string | null
           codigo_indicacao?: string | null
           convidado_por?: string | null
+          cpf?: string | null
           created_at?: string
+          data_nascimento?: string | null
           email: string
           id: string
           nivel_ensino?: string | null
@@ -1140,7 +1184,9 @@ export type Database = {
           avatar_url?: string | null
           codigo_indicacao?: string | null
           convidado_por?: string | null
+          cpf?: string | null
           created_at?: string
+          data_nascimento?: string | null
           email?: string
           id?: string
           nivel_ensino?: string | null
@@ -1161,60 +1207,58 @@ export type Database = {
       }
       solicitacoes_matricula: {
         Row: {
+          atividade_desejada: string | null
+          autoriza_imagem: boolean | null
+          como_conheceu: string | null
+          cpf_responsavel: string | null
           created_at: string | null
           data_nascimento: string
+          escola: string | null
           id: string
+          necessidades_especiais: string | null
           nome_completo: string
+          serie_ano: string | null
+          sobrenome: string | null
           status: Database["public"]["Enums"]["status_solicitacao"] | null
           unidade_id: string
           updated_at: string | null
           whatsapp: string
-          atividade_desejada: string | null
-          sobrenome: string | null
-          cpf_responsavel: string | null
-          escola: string | null
-          serie_ano: string | null
-          necessidades_especiais: string | null
-          como_conheceu: string | null
-          autoriza_imagem: boolean | null
-          email_responsavel: string | null
-          nome_responsavel: string | null
         }
         Insert: {
+          atividade_desejada?: string | null
+          autoriza_imagem?: boolean | null
+          como_conheceu?: string | null
+          cpf_responsavel?: string | null
           created_at?: string | null
           data_nascimento: string
+          escola?: string | null
           id?: string
+          necessidades_especiais?: string | null
           nome_completo: string
+          serie_ano?: string | null
+          sobrenome?: string | null
           status?: Database["public"]["Enums"]["status_solicitacao"] | null
           unidade_id: string
           updated_at?: string | null
           whatsapp: string
-          atividade_desejada?: string | null
-          sobrenome?: string | null
-          cpf_responsavel?: string | null
-          escola?: string | null
-          serie_ano?: string | null
-          necessidades_especiais?: string | null
-          como_conheceu?: string | null
-          autoriza_imagem?: boolean | null
         }
         Update: {
+          atividade_desejada?: string | null
+          autoriza_imagem?: boolean | null
+          como_conheceu?: string | null
+          cpf_responsavel?: string | null
           created_at?: string | null
           data_nascimento?: string
+          escola?: string | null
           id?: string
+          necessidades_especiais?: string | null
           nome_completo?: string
+          serie_ano?: string | null
+          sobrenome?: string | null
           status?: Database["public"]["Enums"]["status_solicitacao"] | null
           unidade_id?: string
           updated_at?: string | null
           whatsapp?: string
-          atividade_desejada?: string | null
-          sobrenome?: string | null
-          cpf_responsavel?: string | null
-          escola?: string | null
-          serie_ano?: string | null
-          necessidades_especiais?: string | null
-          como_conheceu?: string | null
-          autoriza_imagem?: boolean | null
         }
         Relationships: [
           {
@@ -1437,22 +1481,41 @@ export type Database = {
         Args: { p_responsavel_id: string }
         Returns: string[]
       }
-      get_financial_kpis: { Args: { month_ref: string }; Returns: Json }
-      get_monthly_revenue: {
-        Args: { year_ref: number }
-        Returns: {
-          despesa: number
-          mes: string
-          receita: number
-        }[]
-      }
-      get_receita_por_atividade: {
-        Args: never
-        Returns: {
-          nome: string
-          valor: number
-        }[]
-      }
+      get_financial_kpis:
+        | { Args: { month_ref: string }; Returns: Json }
+        | { Args: { month_ref: string; p_unidade_id?: string }; Returns: Json }
+      get_monthly_revenue:
+        | {
+            Args: { year_ref: number }
+            Returns: {
+              despesa: number
+              mes: string
+              receita: number
+            }[]
+          }
+        | {
+            Args: { p_unidade_id?: string; year_ref: number }
+            Returns: {
+              despesa: number
+              mes: string
+              receita: number
+            }[]
+          }
+      get_receita_por_atividade:
+        | {
+            Args: never
+            Returns: {
+              nome: string
+              valor: number
+            }[]
+          }
+        | {
+            Args: { p_unidade_id?: string }
+            Returns: {
+              nome: string
+              valor: number
+            }[]
+          }
       get_turma_vagas: {
         Args: { p_turma_id: string }
         Returns: {
@@ -1492,7 +1555,12 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "direcao" | "coordenacao" | "professor" | "responsavel" | "secretaria"
+      app_role:
+        | "direcao"
+        | "coordenacao"
+        | "professor"
+        | "responsavel"
+        | "secretaria"
       status_certificado: "emitido" | "revogado"
       status_matricula: "pendente" | "ativa" | "cancelada" | "concluida"
       status_pagamento: "pendente" | "pago" | "atrasado" | "cancelado"
@@ -1632,11 +1700,17 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["direcao", "coordenacao", "professor", "responsavel", "secretaria"],
+      app_role: [
+        "direcao",
+        "coordenacao",
+        "professor",
+        "responsavel",
+        "secretaria",
+      ],
       status_certificado: ["emitido", "revogado"],
       status_matricula: ["pendente", "ativa", "cancelada", "concluida"],
       status_pagamento: ["pendente", "pago", "atrasado", "cancelado"],
-      status_solicitacao: ["pendente", "aprovada", "rejeitada"],
+      status_solicitacao: ["pendente", "aprovada", "rejeitada", "interessado"],
       tipo_contato: [
         "ligacao",
         "whatsapp",

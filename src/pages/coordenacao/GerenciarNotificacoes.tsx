@@ -7,9 +7,11 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Mail, Bell, MessageSquare, CheckCircle, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useUnidade } from "@/contexts/UnidadeContext";
 
 const GerenciarNotificacoes = () => {
   const { toast } = useToast();
+  const { currentUnidade } = useUnidade();
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Buscar estatísticas de notificações pendentes
@@ -329,7 +331,7 @@ const GerenciarNotificacoes = () => {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              Utilize o número oficial do Neo Missio para enviar lembretes personalizados:
+              Utilize o número oficial da unidade {currentUnidade?.nome || 'Zafen'} para enviar lembretes personalizados:
             </p>
             <Button variant="outline" className="gap-2" asChild>
               <a

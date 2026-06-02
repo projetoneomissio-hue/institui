@@ -103,14 +103,14 @@ const GradeAvaliacao = () => {
                             <ArrowLeft className="h-5 w-5" />
                         </Button>
                         <div>
-                            <h1 className="text-3xl font-black tracking-tight">Grade de Avaliações</h1>
-                            <p className="text-muted-foreground">Lançamento de notas e desempenho pedagógico.</p>
+                            <h1 className="text-2xl font-bold text-foreground">Grade de Avaliações</h1>
+                            <p className="text-sm text-muted-foreground mt-0.5">Lançamento de notas e desempenho pedagógico.</p>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-3">
                         <Select value={bimestre} onValueChange={setBimestre}>
-                            <SelectTrigger className="w-[180px] glass">
+                            <SelectTrigger className="w-[180px]">
                                 <SelectValue placeholder="Bimestre" />
                             </SelectTrigger>
                             <SelectContent>
@@ -123,12 +123,12 @@ const GradeAvaliacao = () => {
 
                         <Dialog open={isAddingAvaliacao} onOpenChange={setIsAddingAvaliacao}>
                             <DialogTrigger asChild>
-                                <Button className="gap-2 shadow-lg shadow-primary/20">
+                                <Button className="gap-2">
                                     <Plus className="h-4 w-4" />
                                     Nova Avaliação
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent className="glass border-white/10">
+                            <DialogContent>
                                 <DialogHeader>
                                     <DialogTitle>Criar Nova Avaliação</DialogTitle>
                                 </DialogHeader>
@@ -185,35 +185,35 @@ const GradeAvaliacao = () => {
 
                 {/* Stats Row */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card className="glass border-white/5 bg-primary/5">
+                    <Card className="bg-primary/5">
                         <CardContent className="pt-6">
                             <div className="flex items-center gap-3">
                                 <Trophy className="h-5 w-5 text-yellow-500" />
                                 <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Média da Turma</p>
-                                    <p className="text-2xl font-black">7.8</p>
+                                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Média da Turma</p>
+                                    <p className="text-2xl font-bold">7.8</p>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="glass border-white/5 bg-green-500/5">
+                    <Card className="bg-green-500/5">
                         <CardContent className="pt-6">
                             <div className="flex items-center gap-3">
                                 <CheckCircle2 className="h-5 w-5 text-green-500" />
                                 <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Aprovados</p>
-                                    <p className="text-2xl font-black">85%</p>
+                                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Aprovados</p>
+                                    <p className="text-2xl font-bold">85%</p>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="glass border-white/5 bg-red-500/5">
+                    <Card className="bg-red-500/5">
                         <CardContent className="pt-6">
                             <div className="flex items-center gap-3">
                                 <AlertTriangle className="h-5 w-5 text-red-500" />
                                 <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Abaixo da Média</p>
-                                    <p className="text-2xl font-black">2 Alunos</p>
+                                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Abaixo da Média</p>
+                                    <p className="text-2xl font-bold">2 Alunos</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -221,8 +221,8 @@ const GradeAvaliacao = () => {
                 </div>
 
                 {/* Grade Table */}
-                <Card className="glass border-white/5 overflow-hidden">
-                    <CardHeader className="border-b border-white/5 bg-white/5">
+                <Card className="overflow-hidden">
+                    <CardHeader className="border-b border-border">
                         <CardTitle className="text-sm font-bold flex items-center gap-2">
                             <Plus className="h-4 w-4 text-primary" />
                             Notas do {bimestre}º Bimestre
@@ -238,7 +238,7 @@ const GradeAvaliacao = () => {
                                 <Table>
                                     <TableHeader className="bg-muted/30">
                                         <TableRow>
-                                            <TableHead className="w-[300px] border-r border-white/5 sticky left-0 bg-background/80 backdrop-blur-sm z-20">Aluno</TableHead>
+                                            <TableHead className="w-[300px] border-r border-border sticky left-0 bg-background z-20">Aluno</TableHead>
                                             {filteredEvals.map(evalu => (
                                                 <TableHead key={evalu.id} className="text-center min-w-[120px]">
                                                     <div className="space-y-1">
@@ -255,7 +255,7 @@ const GradeAvaliacao = () => {
                                     <TableBody>
                                         {alunos?.map((aluno) => (
                                             <TableRow key={aluno.id} className="hover:bg-primary/5 transition-colors">
-                                                <TableCell className="font-medium border-r border-white/5 sticky left-0 bg-background/80 backdrop-blur-sm z-10">
+                                                <TableCell className="font-medium border-r border-border sticky left-0 bg-background z-10">
                                                     <div className="flex flex-col">
                                                         <span>{aluno.nome_completo}</span>
                                                         <span className="text-[10px] text-muted-foreground truncate">{aluno.responsavel_nome}</span>
@@ -272,7 +272,7 @@ const GradeAvaliacao = () => {
                                                                 max="10"
                                                                 defaultValue={notaObj?.valor_numerico === undefined ? "" : notaObj.valor_numerico}
                                                                 onBlur={(e) => handleNotaChange(evalu.id, aluno.aluno_id, e.target.value)}
-                                                                className={`w-16 mx-auto text-center font-bold glass focus:bg-primary/10 transition-all ${getNotaColor(notaObj?.valor_numerico ?? null)}`}
+                                                                className={`w-16 mx-auto text-center font-bold focus:bg-primary/10 transition-all ${getNotaColor(notaObj?.valor_numerico ?? null)}`}
                                                             />
                                                         </TableCell>
                                                     );

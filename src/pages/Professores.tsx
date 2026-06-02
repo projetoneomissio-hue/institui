@@ -80,6 +80,7 @@ const Professores = () => {
           turmas(
             id,
             nome,
+            atividades(valor_mensal),
             matriculas(count)
           )
         `)
@@ -260,14 +261,11 @@ const Professores = () => {
       return 0;
     }
 
-    const totalAlunos = professor.turmas?.reduce(
-      (acc: number, t: any) => acc + (t.matriculas?.[0]?.count || 0),
-      0
-    ) || 0;
-
-    // Busca valor médio das atividades das turmas (simplificado)
-    const valorMedioPorAluno = 150; // Valor exemplo
-    const comissao = (totalAlunos * valorMedioPorAluno * parseFloat(professor.percentual_comissao.toString())) / 100;
+    const comissao = professor.turmas?.reduce((acc: number, t: any) => {
+      const alunosNaTurma = t.matriculas?.[0]?.count || 0;
+      const valorMensal = t.atividades?.valor_mensal || 0;
+      return acc + (alunosNaTurma * valorMensal * parseFloat(professor.percentual_comissao.toString())) / 100;
+    }, 0) || 0;
 
     return comissao;
   };
@@ -372,10 +370,10 @@ const Professores = () => {
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-right">
-                          <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">
                             {prof.tipo_contrato === "fixo" ? "Salário Mensal" : prof.tipo_contrato === "voluntario" || prof.is_volunteer ? "Remuneração" : "Comissão Estim."}
                           </p>
-                          <p className={`text-lg font-black flex items-center justify-end gap-1 ${prof.tipo_contrato === "fixo" ? "text-pink-500" : ""}`}>
+                          <p className={`text-lg font-bold flex items-center justify-end gap-1 ${prof.tipo_contrato === "fixo" ? "text-pink-500" : ""}`}>
                             <DollarSign className="h-4 w-4" />
                             {comissaoEstimada.toLocaleString("pt-BR", {
                               minimumFractionDigits: 2,
@@ -418,19 +416,16 @@ const Professores = () => {
 
         {/* Dialog para criar/editar */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="sm:max-w-[500px] max-h-[90vh] p-0 bg-background/95 backdrop-blur-xl border border-primary/10 shadow-2xl overflow-hidden flex flex-col">
-            <div className="relative shrink-0 h-20 bg-gradient-to-r from-neomissio-primary/10 to-primary/5 flex items-center px-6 z-10 border-b border-white/5">
-              <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:16px_16px]" />
-              <div className="relative">
-                <DialogTitle className="text-2xl font-bold text-white tracking-tight">
-                  {editingProfessor ? "Editar Professor" : "Novo Professor"}
-                </DialogTitle>
-                <DialogDescription className="text-muted-foreground text-xs mt-1">
-                  {editingProfessor
-                    ? "Atualize as informações do professor."
-                    : "Cadastre um novo professor no sistema."}
-                </DialogDescription>
-              </div>
+          <DialogContent className="sm:max-w-[500px] max-h-[90vh] p-0 overflow-hidden flex flex-col">
+            <div className="shrink-0 px-6 pt-6 pb-4 border-b border-border">
+              <DialogTitle className="text-xl font-bold text-foreground">
+                {editingProfessor ? "Editar Professor" : "Novo Professor"}
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground text-sm mt-1">
+                {editingProfessor
+                  ? "Atualize as informações do professor."
+                  : "Cadastre um novo professor no sistema."}
+              </DialogDescription>
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col space-y-4">
@@ -551,7 +546,7 @@ const Professores = () => {
               )}
             </div>
 
-            <DialogFooter className="px-6 py-4 border-t border-primary/10 bg-muted/20 shrink-0">
+            <DialogFooter className="px-6 py-4 border-t border-border bg-muted/30 shrink-0">
               <Button
                 variant="outline"
                 onClick={handleCloseDialog}

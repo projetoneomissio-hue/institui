@@ -188,7 +188,7 @@ const Pagamentos = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-black text-destructive tracking-tight">
+              <div className="text-3xl font-bold text-destructive">
                 R$ {totalPendente.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
               </div>
               <p className="text-sm font-medium text-destructive/70 mt-1">
@@ -205,7 +205,7 @@ const Pagamentos = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-black text-success tracking-tight">
+              <div className="text-3xl font-bold text-success">
                 R$ {totalPago.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
               </div>
               <p className="text-sm font-medium text-success/70 mt-1">
@@ -288,7 +288,7 @@ const Pagamentos = () => {
                         <div className="flex flex-col md:items-end justify-between self-stretch pt-4 md:pt-0 border-t md:border-t-0 md:border-l border-border/50 md:pl-5 min-w-[200px]">
                           <div className="text-left md:text-right mb-4 border-l-4 md:border-l-0 border-primary md:border-transparent pl-3 md:pl-0">
                             <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">Valor da Parcela</p>
-                            <p className="text-3xl font-black text-foreground tracking-tight">
+                            <p className="text-3xl font-bold text-foreground">
                               R$ {parseFloat(pagamento.valor.toString()).toLocaleString("pt-BR", {
                                 minimumFractionDigits: 2,
                               })}

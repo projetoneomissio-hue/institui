@@ -171,7 +171,7 @@ export const InadimplenciaTable = () => {
                                 <td className="p-4 align-middle">
                                     <div className="flex flex-col">
                                         <span className="font-bold text-foreground">{pagamento.matricula?.aluno?.responsavel?.nome_completo || "Sem Responsável"}</span>
-                                        <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Aluno: {pagamento.matricula?.aluno?.nome_completo}</span>
+                                        <span className="text-[10px] text-muted-foreground">Aluno: {pagamento.matricula?.aluno?.nome_completo}</span>
                                         {pagamento.gateway_url && (
                                             <a href={pagamento.gateway_url} target="_blank" className="text-[10px] text-blue-500 underline mt-1 font-bold">
                                                 Ver Link de Pagamento
@@ -182,7 +182,7 @@ export const InadimplenciaTable = () => {
                                 <td className="p-4 align-middle text-center text-destructive font-bold text-xs">
                                     {new Date(pagamento.data_vencimento).toLocaleDateString("pt-BR")}
                                 </td>
-                                <td className="p-4 align-middle text-right font-black text-foreground">
+                                <td className="p-4 align-middle text-right font-bold text-foreground">
                                     R$ {parseFloat(pagamento.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                                 </td>
                                 <td className="p-4 align-middle text-right flex justify-end gap-2">
@@ -314,17 +314,17 @@ export const InadimplenciaTable = () => {
             {/* Mobile Card View */}
             <div className="md:hidden space-y-4">
                 {inadimplentes.map((pagamento: any) => (
-                    <div key={pagamento.id} className="p-4 rounded-xl border border-primary/10 bg-card/30 backdrop-blur-sm space-y-4">
+                    <div key={pagamento.id} className="p-4 rounded-xl border border-border bg-card space-y-4">
                         <div className="flex justify-between items-start">
                             <div>
                                 <h4 className="font-bold text-foreground text-sm leading-tight">
                                     {pagamento.matricula?.aluno?.responsavel?.nome_completo || "Sem Responsável"}
                                 </h4>
-                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1">
+                                <p className="text-[10px] text-muted-foreground mt-1">
                                     Aluno: {pagamento.matricula?.aluno?.nome_completo}
                                 </p>
                             </div>
-                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-widest bg-destructive/10 text-destructive border border-destructive/20">
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[8px] font-medium uppercase bg-destructive/10 text-destructive border border-destructive/20">
                                 Atrasado
                             </span>
                         </div>
@@ -338,7 +338,7 @@ export const InadimplenciaTable = () => {
                             </div>
                             <div className="text-right">
                                 <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">Valor Devido</p>
-                                <p className="text-lg font-black text-foreground">
+                                <p className="text-lg font-bold text-foreground">
                                     R$ {parseFloat(pagamento.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                                 </p>
                             </div>

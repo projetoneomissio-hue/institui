@@ -280,7 +280,7 @@ const Chamada = () => {
         <DashboardLayout>
             <div className="flex flex-col min-h-screen">
                 {/* Premium Header - Zero Distraction Mode */}
-                <div className="bg-primary pt-3 pb-4 px-6 sticky top-0 z-[100] backdrop-blur-md border-b border-white/10 shadow-sm">
+                <div className="bg-primary pt-3 pb-4 px-6 sticky top-0 z-[100] border-b border-primary-foreground/10 shadow-sm">
                     <div className="flex items-center justify-between text-white max-w-5xl mx-auto w-full">
                         <div className="flex items-center gap-4">
                             <Button
@@ -292,7 +292,7 @@ const Chamada = () => {
                                 <ChevronLeft className="h-5 w-5" />
                             </Button>
                             <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-3">
-                                <h1 className="text-sm sm:text-base font-black uppercase tracking-widest text-white/95">Diário de Classe</h1>
+                                <h1 className="text-sm sm:text-base font-semibold text-white/95">Diário de Classe</h1>
                                 <span className="hidden sm:block opacity-30">|</span>
                                 <span className="text-xs sm:text-sm font-medium opacity-80 truncate max-w-[150px] sm:max-w-none">
                                     {studentsData?.nomeTurma || "Carregando..."}
@@ -302,7 +302,7 @@ const Chamada = () => {
 
                         <div className="flex items-center gap-3">
                             <div className="hidden sm:flex flex-col items-end mr-2">
-                                <span className="text-[9px] font-black text-white/40 uppercase tracking-widest leading-none">Presença</span>
+                                <span className="text-[10px] font-medium text-white/60 uppercase leading-none">Presença</span>
                                 <span className="text-[11px] font-bold text-white/80 mt-1">
                                     {Object.values(attendance).filter(Boolean).length}/{studentsData?.matriculas?.length || 0}
                                 </span>
@@ -310,7 +310,7 @@ const Chamada = () => {
 
                             <Button
                                 size="sm"
-                                className="h-9 rounded-xl bg-white text-primary hover:bg-white/90 font-black uppercase tracking-widest text-xs shadow-lg transition-all active:scale-95 group overflow-hidden px-4"
+                                className="h-9 rounded-xl bg-white text-primary hover:bg-white/90 font-semibold text-xs transition-all active:scale-95 px-4"
                                 onClick={() => saveMutation.mutate()}
                                 disabled={saveMutation.isPending}
                             >
@@ -324,18 +324,18 @@ const Chamada = () => {
                                 )}
                             </Button>
 
-                            <div className="sm:hidden flex items-center justify-center bg-white/10 rounded-lg px-2 h-9 border border-white/5">
-                                <span className="text-[11px] font-black text-white">
+                            <div className="sm:hidden flex items-center justify-center bg-white/10 rounded-lg px-2 h-9">
+                                <span className="text-[11px] font-semibold text-white">
                                     {Object.values(attendance).filter(Boolean).length}/{studentsData?.matriculas?.length || 0}
                                 </span>
                             </div>
 
                             {isOffline ? (
-                                <div className="flex items-center gap-1.5 px-3 py-1 bg-red-500/20 text-red-100 text-xs font-black rounded-full border border-red-500/30 uppercase tracking-tighter shadow-sm">
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-red-500/20 text-red-100 text-xs font-semibold rounded-full border border-red-500/30">
                                     <WifiOff className="w-3 h-3" /> Offline
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-1.5 px-3 py-1 bg-green-500/20 text-green-100 text-xs font-black rounded-full border border-green-500/30 uppercase tracking-tighter shadow-sm">
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-green-500/20 text-green-100 text-xs font-semibold rounded-full border border-green-500/30">
                                     <Wifi className="w-3 h-3" /> Online
                                 </div>
                             )}
@@ -345,13 +345,13 @@ const Chamada = () => {
 
                 <main className="flex-1 px-3 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full mt-6 space-y-6 pb-12">
                     {/* Control Card */}
-                    <Card className="glass shadow-xl border-white/20 backdrop-blur-xl rounded-[24px]">
+                    <Card className="rounded-xl">
                         <CardContent className="p-5 sm:p-7 space-y-5">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <div className="space-y-2">
-                                    <Label className="text-[11px] font-black text-muted-foreground uppercase px-1 tracking-widest">Turma Selecionada</Label>
+                                    <Label className="text-xs font-medium text-muted-foreground px-1">Turma Selecionada</Label>
                                     <Select value={selectedTurmaId} onValueChange={setSelectedTurmaId}>
-                                        <SelectTrigger className="h-12 bg-background/40 border-input/40 backdrop-blur-sm rounded-xl">
+                                        <SelectTrigger className="h-11 rounded-xl">
                                             <SelectValue placeholder="Escolha uma turma..." />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -365,21 +365,21 @@ const Chamada = () => {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[11px] font-black text-muted-foreground uppercase px-1 tracking-widest">Data da Aula</Label>
+                                    <Label className="text-xs font-medium text-muted-foreground px-1">Data da Aula</Label>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <Button
                                                 variant="outline"
                                                 className={cn(
-                                                    "w-full h-12 justify-start text-left font-medium rounded-xl border-white/10 bg-black/20 hover:bg-black/40 text-white shadow-inner",
+                                                    "w-full h-11 justify-start text-left font-medium rounded-xl",
                                                     !date && "text-muted-foreground"
                                                 )}
                                             >
-                                                <CalendarIcon className="mr-3 h-5 w-5 text-white/50" />
+                                                <CalendarIcon className="mr-3 h-5 w-5 text-muted-foreground" />
                                                 {date ? format(date, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
                                             </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0 rounded-2xl border-white/10 shadow-2xl bg-zinc-950 text-white" align="end">
+                                        <PopoverContent className="w-auto p-0 rounded-xl" align="end">
                                             <CalendarUI
                                                 mode="single"
                                                 selected={date}
@@ -399,7 +399,7 @@ const Chamada = () => {
 
                             {selectedTurmaId && (studentsData?.matriculas?.length || 0) > 0 && (
                                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-border/30">
-                                    <p className="text-xs font-bold text-muted-foreground/70 uppercase tracking-widest">
+                                    <p className="text-xs text-muted-foreground">
                                         {Object.values(attendance).filter(Boolean).length} presentes de {studentsData?.matriculas?.length}
                                     </p>
                                     <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -427,7 +427,7 @@ const Chamada = () => {
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                className="flex-1 sm:flex-initial rounded-xl text-xs font-black uppercase tracking-tighter border-green-500/20 text-green-600 hover:bg-green-500/5 h-9"
+                                                className="flex-1 sm:flex-initial rounded-xl text-xs font-medium border-green-500/20 text-green-600 hover:bg-green-500/5 h-9"
                                                 onClick={() => {
                                                     const newState = { ...attendance };
                                                     studentsData?.matriculas?.forEach((m: any) => newState[m.id] = true);
@@ -439,7 +439,7 @@ const Chamada = () => {
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                className="flex-1 sm:flex-initial rounded-xl text-xs font-black uppercase tracking-tighter border-red-500/20 text-red-600 hover:bg-red-500/5 h-9"
+                                                className="flex-1 sm:flex-initial rounded-xl text-xs font-medium border-red-500/20 text-red-600 hover:bg-red-500/5 h-9"
                                                 onClick={() => {
                                                     const newState = { ...attendance };
                                                     studentsData?.matriculas?.forEach((m: any) => newState[m.id] = false);
@@ -461,10 +461,10 @@ const Chamada = () => {
                             {loadingStudents ? (
                                 <div className="flex flex-col items-center justify-center py-20 gap-4">
                                     <Loader2 className="h-12 w-12 animate-spin text-primary opacity-30" />
-                                    <p className="text-muted-foreground font-black uppercase tracking-widest text-xs">Aguarde...</p>
+                                    <p className="text-muted-foreground font-medium text-xs">Aguarde...</p>
                                 </div>
                             ) : studentsData?.matriculas?.length === 0 ? (
-                                <Card className="glass border-white/5 bg-white/5 border-dashed rounded-[24px]">
+                                <Card className="border-dashed rounded-xl">
                                     <CardContent className="p-12 text-center text-muted-foreground flex flex-col items-center">
                                         <AlertCircle className="h-12 w-12 mb-4 opacity-10" />
                                         <p className="font-medium tracking-tight">Nenhum aluno matriculado nesta turma para o dia de hoje.</p>
@@ -486,7 +486,7 @@ const Chamada = () => {
                                                         }`}
                                                 >
                                                     <div className="flex items-center gap-4 flex-1 w-full">
-                                                        <div className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center text-white font-black text-[11px] shadow-lg transition-transform duration-500 ${isPresent ? "bg-green-500" : "bg-red-500 rotate-12"}`}>
+                                                        <div className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center text-white font-bold text-[11px] transition-transform duration-500 ${isPresent ? "bg-green-500" : "bg-red-500 rotate-12"}`}>
                                                             {studentInitials}
                                                         </div>
 
@@ -508,13 +508,13 @@ const Chamada = () => {
                                                     <div className="flex items-center justify-between sm:justify-end gap-2 mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-0 border-border/10 shrink-0">
                                                         <div className="flex items-center bg-muted/30 p-1 rounded-xl border border-border/10">
                                                             <button
-                                                                className={`h-9 px-4 rounded-lg text-xs font-black uppercase tracking-tighter transition-all flex-1 sm:flex-none ${!isPresent ? "bg-red-500 text-white shadow-md shadow-red-500/30" : "text-muted-foreground hover:bg-background/40"}`}
+                                                                className={`h-9 px-4 rounded-lg text-xs font-medium transition-all flex-1 sm:flex-none ${!isPresent ? "bg-red-500 text-white shadow-md shadow-red-500/30" : "text-muted-foreground hover:bg-background/40"}`}
                                                                 onClick={() => setPresence(m.id, false)}
                                                             >
                                                                 FALTOU
                                                             </button>
                                                             <button
-                                                                className={`h-9 px-4 rounded-lg text-xs font-black uppercase tracking-tighter transition-all flex-1 sm:flex-none ${isPresent ? "bg-green-500 text-white shadow-md shadow-green-500/30" : "text-muted-foreground hover:bg-background/40"}`}
+                                                                className={`h-9 px-4 rounded-lg text-xs font-medium transition-all flex-1 sm:flex-none ${isPresent ? "bg-green-500 text-white shadow-md shadow-green-500/30" : "text-muted-foreground hover:bg-background/40"}`}
                                                                 onClick={() => setPresence(m.id, true)}
                                                             >
                                                                 PRESENTE
@@ -549,19 +549,19 @@ const Chamada = () => {
                                             >
                                                 <div className="p-5 flex flex-col gap-4">
                                                     <div className="flex items-center gap-4">
-                                                        <div className={`h-12 w-12 shrink-0 rounded-full flex items-center justify-center text-white font-black tracking-widest shadow-xl transition-all duration-500 ${isPresent ? "bg-green-500" : "bg-red-500 rotate-12"}`}>
+                                                        <div className={`h-12 w-12 shrink-0 rounded-full flex items-center justify-center text-white font-bold transition-all duration-500 ${isPresent ? "bg-green-500" : "bg-red-500 rotate-12"}`}>
                                                             {studentInitials}
                                                         </div>
                                                         <div className="min-w-0 flex-1">
-                                                            <h3 className={`font-black text-[15px] truncate transition-colors tracking-tight ${isPresent ? "text-foreground" : "text-muted-foreground line-through decoration-red-500/30"}`}>
+                                                            <h3 className={`font-semibold text-[15px] truncate transition-colors ${isPresent ? "text-foreground" : "text-muted-foreground line-through decoration-red-500/30"}`}>
                                                                 {m.alunos?.nome_completo}
                                                             </h3>
                                                             <div className="flex items-center gap-2 mt-1.5">
                                                                 {m.alunos?.anamneses?.[0]?.is_pne && (
-                                                                    <Badge variant="destructive" className="text-[9px] px-2 py-0 h-4 font-black uppercase tracking-tighter bg-red-500">PNE</Badge>
+                                                                    <Badge variant="destructive" className="text-[9px] px-2 py-0 h-4 font-semibold bg-red-500">PNE</Badge>
                                                                 )}
                                                                 {(m.alunos?.anamneses?.[0]?.doenca_cronica || m.alunos?.anamneses?.[0]?.alergias) && (
-                                                                    <Badge variant="outline" className="text-[9px] px-2 py-0 h-4 font-black uppercase tracking-tighter border-orange-500 text-orange-600 bg-orange-50/50">Saúde</Badge>
+                                                                    <Badge variant="outline" className="text-[9px] px-2 py-0 h-4 font-semibold border-orange-500 text-orange-600 bg-orange-50/50">Saúde</Badge>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -570,13 +570,13 @@ const Chamada = () => {
                                                     <div className="flex items-center gap-2 pt-4 border-t border-border/10">
                                                         <div className="grid grid-cols-2 flex-1 gap-1.5 bg-muted/30 p-1 rounded-xl">
                                                             <button
-                                                                className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-black uppercase tracking-tighter transition-all ${!isPresent ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : "text-muted-foreground hover:bg-background/50 opacity-60"}`}
+                                                                className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${!isPresent ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : "text-muted-foreground hover:bg-background/50 opacity-60"}`}
                                                                 onClick={(e) => { e.stopPropagation(); setPresence(m.id, false); }}
                                                             >
                                                                 <X className="w-3 h-3" /> Faltou
                                                             </button>
                                                             <button
-                                                                className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-black uppercase tracking-tighter transition-all ${isPresent ? "bg-green-500 text-white shadow-lg shadow-green-500/20" : "text-muted-foreground hover:bg-background/50 opacity-60"}`}
+                                                                className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${isPresent ? "bg-green-500 text-white shadow-lg shadow-green-500/20" : "text-muted-foreground hover:bg-background/50 opacity-60"}`}
                                                                 onClick={(e) => { e.stopPropagation(); setPresence(m.id, true); }}
                                                             >
                                                                 <Check className="w-3 h-3" /> Presente
@@ -603,7 +603,7 @@ const Chamada = () => {
                                     })}
                                 </div>
                             ) : (
-                                <Card className="glass border-red-500/20 bg-red-500/5 rounded-[24px]">
+                                <Card className="border-red-500/20 bg-red-500/5 rounded-xl">
                                     <CardContent className="p-10 text-center text-red-500 flex flex-col items-center">
                                         <AlertCircle className="h-10 w-10 mb-3 opacity-80" />
                                         <p className="font-bold">Ocorreu um erro ao carregar os dados.</p>

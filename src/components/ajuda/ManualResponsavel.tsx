@@ -9,8 +9,8 @@ import { UserPlus, UserCheck, CreditCard, HeartPulse, FileText, Info, Graduation
 export const ManualResponsavel = () => {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="bg-gradient-to-r from-primary/10 to-transparent p-6 rounded-2xl border border-primary/20">
-        <h2 className="text-xl font-black text-primary flex items-center gap-2 mb-2">
+      <div className="bg-primary/10 p-6 rounded-2xl border border-primary/20">
+        <h2 className="text-xl font-bold text-primary flex items-center gap-2 mb-2">
           <GraduationCap className="h-6 w-6" />
           Guia de Pais e Alunos
         </h2>

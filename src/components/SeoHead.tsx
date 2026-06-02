@@ -1,4 +1,5 @@
 import { Helmet } from 'react-helmet-async';
+import { useUnidade } from '@/contexts/UnidadeContext';
 
 interface SeoHeadProps {
     title: string;
@@ -13,7 +14,8 @@ export const SeoHead = ({
     image = '/og-image.png',
     url = window.location.href
 }: SeoHeadProps) => {
-    const siteTitle = 'Neo Missio - Centro Social';
+    const { currentUnidade } = useUnidade();
+    const siteTitle = currentUnidade?.nome || 'Zafen';
     const fullTitle = `${title} | ${siteTitle}`;
 
     return (

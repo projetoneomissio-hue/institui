@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { z } from "zod";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const matriculaSchema = z.object({
   aluno_id: z.string().uuid("Selecione um aluno"),
@@ -22,6 +22,7 @@ const NovaMatricula = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [selectedAlunoId, setSelectedAlunoId] = useState("");
   const [selectedAtividadeId, setSelectedAtividadeId] = useState("");
@@ -164,12 +165,9 @@ const NovaMatricula = () => {
       queryClient.invalidateQueries({ queryKey: ["matriculas-aluno"] });
       toast({
         title: "Matrícula solicitada!",
-        description: "Aguarde a aprovação da direção.",
+        description: "Aguarde a aprovação da direção. Você será notificado em breve.",
       });
-      // Limpa formulário
-      setSelectedAlunoId("");
-      setSelectedAtividadeId("");
-      setSelectedTurmaId("");
+      navigate("/responsavel/dashboard");
     },
     onError: (error: any) => {
       toast({
