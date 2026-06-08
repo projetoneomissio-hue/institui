@@ -39,6 +39,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUnidade } from "@/contexts/UnidadeContext";
+import { useAllFeatures, type FeatureKey } from "@/contexts/FeatureContext";
 import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "@/components/mode-toggle";
 import { UnidadeSwitcher } from "@/components/UnidadeSwitcher";
@@ -60,8 +61,21 @@ interface DashboardLayoutProps {
   children: ReactNode;
 }
 
-const getNavigationByRole = (role: string) => {
-  const nav: Record<string, any[]> = {
+interface NavItem {
+  name: string;
+  href: string;
+  icon: React.ElementType;
+  search?: string;
+  feature?: FeatureKey;
+}
+
+interface NavGroup {
+  group: string;
+  items: NavItem[];
+}
+
+const getNavigationByRole = (role: string, features: Record<FeatureKey, boolean>): NavGroup[] => {
+  const nav: Record<string, NavGroup[]> = {
     direcao: [
       {
         group: "Gestão",
@@ -76,7 +90,7 @@ const getNavigationByRole = (role: string) => {
           { name: "Turmas", href: "/direcao/turmas", icon: Users },
           { name: "Matrículas", href: "/direcao/matriculas", icon: FileText },
           { name: "Interessados", href: "/direcao/interessados", icon: MessageCircle },
-          { name: "Calendário", href: "/calendario", icon: Calendar },
+          { name: "Calendário", href: "/calendario", icon: Calendar, feature: "calendario" },
         ]
       },
       {
@@ -95,7 +109,7 @@ const getNavigationByRole = (role: string) => {
         items: [
           { name: "Cobranças", href: "/direcao/cobrancas", icon: DollarSign },
           { name: "Financeiro (Dash)", href: "/financeiro", icon: BarChart },
-          { name: "Prédio", href: "/predio", icon: Building2 },
+          { name: "Prédio", href: "/predio", icon: Building2, feature: "predio" },
         ]
       },
       {
@@ -103,7 +117,7 @@ const getNavigationByRole = (role: string) => {
         items: [
           { name: "Comunicados", href: "/direcao/comunicados", icon: Megaphone },
           { name: "Notificações", href: "/coordenacao/notificacoes", icon: AlertCircle },
-          { name: "Editor do Site", href: "/direcao/landing", icon: Globe },
+          { name: "Editor do Site", href: "/direcao/landing", icon: Globe, feature: "landing_publica" },
         ]
       },
       {
@@ -127,13 +141,13 @@ const getNavigationByRole = (role: string) => {
           { name: "Turmas", href: "/coordenacao/turmas", icon: Users },
           { name: "Interessados", href: "/direcao/interessados", icon: MessageCircle },
           { name: "Alunos", href: "/alunos", icon: Users },
-          { name: "Calendário", href: "/calendario", icon: Calendar },
+          { name: "Calendário", href: "/calendario", icon: Calendar, feature: "calendario" },
         ]
       },
       {
         group: "Operacional",
         items: [
-          { name: "Voluntários", href: "/coordenacao/voluntarios", icon: UserCheck },
+          { name: "Voluntários", href: "/coordenacao/voluntarios", icon: UserCheck, feature: "voluntarios" },
         ]
       },
       {
@@ -161,8 +175,8 @@ const getNavigationByRole = (role: string) => {
         group: "Acadêmico",
         items: [
           { name: "Minhas Turmas", href: "/professor/turmas", icon: Users },
-          { name: "Grade de Notas", href: "/professor/turmas", icon: Trophy, search: "?mode=grade" },
-          { name: "Chamada / Frequência", href: "/professor/turmas", icon: FileText, search: "?mode=chamada" },
+          { name: "Grade de Notas", href: "/professor/turmas", icon: Trophy, search: "?mode=grade", feature: "academico" },
+          { name: "Chamada / Frequência", href: "/professor/turmas", icon: FileText, search: "?mode=chamada", feature: "academico" },
           { name: "Meus Alunos", href: "/professor/alunos", icon: Users },
           { name: "Observações", href: "/professor/observacoes", icon: FileText },
         ]
@@ -170,7 +184,7 @@ const getNavigationByRole = (role: string) => {
       {
         group: "Financeiro",
         items: [
-          { name: "Comissões", href: "/professor/comissoes", icon: DollarSign },
+          { name: "Comissões", href: "/professor/comissoes", icon: DollarSign, feature: "comissoes" },
         ]
       },
       {
@@ -193,7 +207,7 @@ const getNavigationByRole = (role: string) => {
           { name: "Cadastrar Aluno", href: "/responsavel/cadastrar-aluno", icon: UserCircle },
           { name: "Nova Matrícula", href: "/responsavel/nova-matricula", icon: FileText },
           { name: "Atividades Matriculadas", href: "/responsavel/atividades-matriculadas", icon: Dumbbell },
-          { name: "Anamnese", href: "/responsavel/anamnese", icon: FileText },
+          { name: "Anamnese", href: "/responsavel/anamnese", icon: FileText, feature: "saude" },
         ]
       },
       {
@@ -240,7 +254,14 @@ const getNavigationByRole = (role: string) => {
       }
     ]
   };
-  return nav[role] || [];
+
+  const groups = nav[role] || [];
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.feature || features[item.feature]),
+    }))
+    .filter((group) => group.items.length > 0);
 };
 
 const getBottomNavItems = (role: string) => {
@@ -279,8 +300,9 @@ const Sidebar = ({ isCollapsed, toggleCollapsed }: { isCollapsed: boolean; toggl
   const { user, logout } = useAuth();
   const { currentUnidade } = useUnidade();
   const navigate = useNavigate();
+  const features = useAllFeatures();
 
-  const navigation = user && user.activeRole ? getNavigationByRole(user.activeRole) : [];
+  const navigation = user && user.activeRole ? getNavigationByRole(user.activeRole, features) : [];
 
   const handleLogout = () => {
     logout();
