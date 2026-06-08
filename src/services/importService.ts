@@ -400,3 +400,299 @@ export function downloadErrorReport(erros: ImportSummary["erros"]): void {
   XLSX.utils.book_append_sheet(wb, ws, "erros");
   XLSX.writeFile(wb, "erros_importacao.xlsx");
 }
+
+// ===========================================================================
+// FASE B — Importação de Matrículas
+// ===========================================================================
+
+export interface MatriculaImportRow {
+  cpf_aluno?: string;
+  nome_aluno?: string;
+  data_nascimento_aluno?: string;
+  atividade?: string;
+  turma: string;
+  data_inicio: string;
+  data_fim?: string;
+  status?: string; // ativa | concluida | cancelada | pendente
+}
+
+export interface MatriculaImportSummary {
+  total: number;
+  matriculasCriadas: number;
+  erros: { row: number; nome: string; motivo: string }[];
+}
+
+const MATRICULA_HEADERS: { key: keyof MatriculaImportRow; label: string }[] = [
+  { key: "cpf_aluno",              label: "cpf_aluno (somente números)" },
+  { key: "nome_aluno",             label: "nome_aluno (se não tiver CPF)" },
+  { key: "data_nascimento_aluno",  label: "data_nascimento_aluno (DD/MM/AAAA)" },
+  { key: "atividade",              label: "atividade (nome da atividade)" },
+  { key: "turma",                  label: "turma * (nome exato da turma)" },
+  { key: "data_inicio",            label: "data_inicio * (DD/MM/AAAA)" },
+  { key: "data_fim",               label: "data_fim (DD/MM/AAAA — opcional)" },
+  { key: "status",                 label: "status (ativa/concluida/cancelada/pendente)" },
+];
+
+const MATRICULA_EXAMPLE: Record<string, string> = {
+  "cpf_aluno (somente números)": "12345678900",
+  "nome_aluno (se não tiver CPF)": "Maria da Silva",
+  "data_nascimento_aluno (DD/MM/AAAA)": "15/03/2015",
+  "atividade (nome da atividade)": "Jiu-Jitsu",
+  "turma * (nome exato da turma)": "Jiu-jitsu infantil 1 (4-7 anos)",
+  "data_inicio * (DD/MM/AAAA)": "01/03/2025",
+  "data_fim (DD/MM/AAAA — opcional)": "31/12/2025",
+  "status (ativa/concluida/cancelada/pendente)": "ativa",
+};
+
+const MATRICULA_INSTRUCTIONS = [
+  ["INSTRUÇÕES DE PREENCHIMENTO — MATRÍCULAS"],
+  [],
+  ["Campos obrigatórios", "turma, data_inicio"],
+  ["Identificação do aluno", "cpf_aluno (preferencial) OU nome_aluno + data_nascimento_aluno"],
+  [],
+  ["CAMPO", "DESCRIÇÃO"],
+  ["cpf_aluno", "CPF do aluno sem pontos/traços. Método mais confiável de identificação."],
+  ["nome_aluno", "Usado apenas se cpf_aluno estiver vazio. Deve ser idêntico ao cadastrado."],
+  ["turma", "Nome exato da turma como está cadastrado no sistema. Consulte a tela de Turmas."],
+  ["atividade", "Opcional — ajuda a desambiguar turmas com nomes iguais em atividades diferentes."],
+  ["data_inicio", "Data de início da matrícula. Pode ser no passado para histórico."],
+  ["data_fim", "Data de encerramento. Deixe vazio se a matrícula ainda está ativa."],
+  ["status", "ativa = em curso | concluida = encerrada | cancelada = desistência | pendente = aguardando confirmação"],
+  [],
+  ["IMPORTANTE"],
+  ["• O aluno precisa já existir no sistema (use Importar Alunos antes se necessário)"],
+  ["• Matrículas duplicadas (mesmo aluno + mesma turma) serão ignoradas"],
+  ["• A capacidade máxima da turma será verificada antes de cada matrícula"],
+  ["• Se status estiver vazio, será definido como 'ativa'"],
+];
+
+export function generateMatriculaTemplate(): void {
+  const wb = XLSX.utils.book_new();
+
+  const headers = MATRICULA_HEADERS.map((h) => h.label);
+  const ws = XLSX.utils.aoa_to_sheet([
+    headers,
+    headers.map((h) => MATRICULA_EXAMPLE[h] ?? ""),
+  ]);
+  ws["!cols"] = headers.map(() => ({ wch: 35 }));
+  XLSX.utils.book_append_sheet(wb, ws, "matriculas");
+
+  const wsInstr = XLSX.utils.aoa_to_sheet(MATRICULA_INSTRUCTIONS);
+  wsInstr["!cols"] = [{ wch: 30 }, { wch: 70 }];
+  XLSX.utils.book_append_sheet(wb, wsInstr, "instrucoes");
+
+  XLSX.writeFile(wb, "template_importacao_matriculas.xlsx");
+}
+
+export function parseMatriculaFile(file: File): Promise<{ rows: MatriculaImportRow[]; errors: ValidationError[] }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target!.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: "array", cellDates: false });
+
+        const sheetName =
+          wb.SheetNames.find((n) => n.toLowerCase() === "matriculas") ?? wb.SheetNames[0];
+        const ws = wb.Sheets[sheetName];
+        const raw: Record<string, string>[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
+        if (raw.length === 0) {
+          return resolve({ rows: [], errors: [{ row: 0, field: "arquivo", message: "Planilha vazia." }] });
+        }
+
+        const normalized = raw.map((r) => {
+          const out: Record<string, string> = {};
+          for (const [k, v] of Object.entries(r)) out[normalizeHeader(k)] = String(v).trim();
+          return out;
+        });
+
+        const errors: ValidationError[] = [];
+        const rows: MatriculaImportRow[] = [];
+
+        normalized.forEach((r, i) => {
+          const rowNum = i + 2;
+          const rowErrors: ValidationError[] = [];
+
+          if (!r.turma) rowErrors.push({ row: rowNum, field: "turma", message: "Campo obrigatório." });
+          if (!r.data_inicio) rowErrors.push({ row: rowNum, field: "data_inicio", message: "Campo obrigatório." });
+          if (!r.cpf_aluno && !r.nome_aluno) {
+            rowErrors.push({ row: rowNum, field: "identificacao", message: "Informe cpf_aluno ou nome_aluno." });
+          }
+
+          const dateInicio = parseDate(r.data_inicio);
+          if (r.data_inicio && !dateInicio) {
+            rowErrors.push({ row: rowNum, field: "data_inicio", message: `Formato inválido: "${r.data_inicio}". Use DD/MM/AAAA.` });
+          }
+
+          const dateFim = r.data_fim ? parseDate(r.data_fim) : null;
+          if (r.data_fim && !dateFim) {
+            rowErrors.push({ row: rowNum, field: "data_fim", message: `Formato inválido: "${r.data_fim}". Use DD/MM/AAAA.` });
+          }
+
+          const validStatuses = ["ativa", "concluida", "cancelada", "pendente", ""];
+          if (r.status && !validStatuses.includes(r.status.toLowerCase())) {
+            rowErrors.push({ row: rowNum, field: "status", message: `Status inválido: "${r.status}". Use ativa/concluida/cancelada/pendente.` });
+          }
+
+          const cpfClean = r.cpf_aluno ? unmaskCPF(r.cpf_aluno) : "";
+          if (cpfClean && (cpfClean.length !== 11 || !validateCPF(cpfClean))) {
+            rowErrors.push({ row: rowNum, field: "cpf_aluno", message: `CPF inválido: "${r.cpf_aluno}".` });
+          }
+
+          errors.push(...rowErrors);
+          if (rowErrors.length === 0) {
+            rows.push({
+              cpf_aluno: cpfClean || undefined,
+              nome_aluno: r.nome_aluno || undefined,
+              data_nascimento_aluno: r.data_nascimento_aluno ? (parseDate(r.data_nascimento_aluno) ?? r.data_nascimento_aluno) : undefined,
+              atividade: r.atividade || undefined,
+              turma: r.turma,
+              data_inicio: dateInicio!,
+              data_fim: dateFim ?? undefined,
+              status: r.status?.toLowerCase() || "ativa",
+            });
+          }
+        });
+
+        resolve({ rows, errors });
+      } catch (err) {
+        reject(new Error("Não foi possível ler o arquivo."));
+      }
+    };
+    reader.onerror = () => reject(new Error("Erro ao ler o arquivo."));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+async function findAluno(row: MatriculaImportRow): Promise<string | null> {
+  // Busca por CPF (mais confiável)
+  if (row.cpf_aluno) {
+    const { data } = await supabase
+      .from("alunos")
+      .select("id")
+      .eq("cpf", row.cpf_aluno)
+      .maybeSingle();
+    if (data) return data.id;
+  }
+
+  // Busca por nome + data de nascimento
+  if (row.nome_aluno) {
+    let query = supabase
+      .from("alunos")
+      .select("id")
+      .ilike("nome_completo", row.nome_aluno);
+
+    if (row.data_nascimento_aluno) {
+      query = query.eq("data_nascimento", row.data_nascimento_aluno);
+    }
+
+    const { data } = await query.maybeSingle();
+    if (data) return data.id;
+  }
+
+  return null;
+}
+
+async function findTurma(row: MatriculaImportRow): Promise<{ id: string; capacidade_maxima: number } | null> {
+  let query = supabase
+    .from("turmas")
+    .select("id, capacidade_maxima, atividade:atividades(nome)")
+    .ilike("nome", row.turma);
+
+  const { data } = await query;
+  if (!data || data.length === 0) return null;
+
+  // Se veio atividade, filtra
+  if (row.atividade && data.length > 1) {
+    const filtered = data.filter((t: any) =>
+      t.atividade?.nome?.toLowerCase().includes(row.atividade!.toLowerCase())
+    );
+    if (filtered.length > 0) return filtered[0];
+  }
+
+  return data[0];
+}
+
+export async function executeMatriculaImport(rows: MatriculaImportRow[]): Promise<MatriculaImportSummary> {
+  const summary: MatriculaImportSummary = {
+    total: rows.length,
+    matriculasCriadas: 0,
+    erros: [],
+  };
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const label = row.nome_aluno ?? row.cpf_aluno ?? `linha ${i + 2}`;
+
+    try {
+      // 1. Localiza aluno
+      const alunoId = await findAluno(row);
+      if (!alunoId) {
+        summary.erros.push({ row: i + 2, nome: label, motivo: "Aluno não encontrado no sistema. Importe-o primeiro pela Fase A." });
+        continue;
+      }
+
+      // 2. Localiza turma
+      const turma = await findTurma(row);
+      if (!turma) {
+        summary.erros.push({ row: i + 2, nome: label, motivo: `Turma "${row.turma}" não encontrada.` });
+        continue;
+      }
+
+      // 3. Verifica duplicata
+      const { data: existente } = await supabase
+        .from("matriculas")
+        .select("id")
+        .eq("aluno_id", alunoId)
+        .eq("turma_id", turma.id)
+        .maybeSingle();
+
+      if (existente) {
+        summary.erros.push({ row: i + 2, nome: label, motivo: `Matrícula duplicada — aluno já está na turma "${row.turma}".` });
+        continue;
+      }
+
+      // 4. Verifica capacidade (apenas para matrículas ativas)
+      if (row.status === "ativa" || row.status === "pendente") {
+        const { count } = await supabase
+          .from("matriculas")
+          .select("id", { count: "exact", head: true })
+          .eq("turma_id", turma.id)
+          .in("status", ["ativa", "pendente"]);
+
+        if (count !== null && count >= turma.capacidade_maxima) {
+          summary.erros.push({ row: i + 2, nome: label, motivo: `Turma "${row.turma}" sem vagas (capacidade ${turma.capacidade_maxima}).` });
+          continue;
+        }
+      }
+
+      // 5. Insere matrícula
+      const { error } = await supabase.from("matriculas").insert({
+        aluno_id: alunoId,
+        turma_id: turma.id,
+        data_inicio: row.data_inicio,
+        data_fim: row.data_fim ?? null,
+        status: (row.status ?? "ativa") as any,
+      });
+
+      if (error) throw new Error(error.message);
+
+      summary.matriculasCriadas++;
+    } catch (err: any) {
+      summary.erros.push({ row: i + 2, nome: label, motivo: err.message ?? "Erro desconhecido." });
+    }
+  }
+
+  return summary;
+}
+
+export function downloadMatriculaErrorReport(erros: MatriculaImportSummary["erros"]): void {
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(
+    erros.map((e) => ({ Linha: e.row, Aluno: e.nome, Motivo: e.motivo }))
+  );
+  ws["!cols"] = [{ wch: 8 }, { wch: 30 }, { wch: 60 }];
+  XLSX.utils.book_append_sheet(wb, ws, "erros");
+  XLSX.writeFile(wb, "erros_importacao_matriculas.xlsx");
+}

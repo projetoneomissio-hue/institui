@@ -15,7 +15,7 @@ import {
 import { useUnidade } from "@/contexts/UnidadeContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Plus, Eye, Search, Phone, Calendar, User, Activity, AlertCircle, Link as LinkIcon, Loader2, Copy, Check, X
+  Plus, Eye, Search, Phone, Calendar, User, Activity, AlertCircle, Link as LinkIcon, Loader2, Copy, Check, X, Upload
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -608,7 +608,15 @@ const Matriculas = () => {
               Gestão centralizada de alunos e inscrições
             </p>
           </div>
-          <Button 
+          <Button
+            variant="outline"
+            onClick={() => navigate('/direcao/matriculas/importar')}
+            className="gap-2 h-11 px-4"
+          >
+            <Upload className="h-4 w-4" />
+            Importar
+          </Button>
+          <Button
             onClick={() => navigate('/direcao/pre-cadastro')}
             className="gap-2 h-11 px-6 font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all cursor-pointer"
           >

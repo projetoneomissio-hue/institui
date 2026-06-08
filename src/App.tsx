@@ -22,6 +22,7 @@ import Dashboard from "./pages/Dashboard";
 import Atividades from "./pages/Atividades";
 import Alunos from "./pages/Alunos";
 import ImportarAlunos from "./pages/ImportarAlunos";
+import ImportarMatriculas from "./pages/ImportarMatriculas";
 import Professores from "./pages/Professores";
 import Financeiro from "./pages/Financeiro";
 import Predio from "./pages/Predio";
@@ -124,6 +125,7 @@ export const AppRoutes = () => {
       <Route path="/direcao/coordenadores" element={<ProtectedRoute allowedRoles={["direcao"]}><Coordenadores /></ProtectedRoute>} />
       <Route path="/convites" element={<ProtectedRoute allowedRoles={["direcao"]}><Convites /></ProtectedRoute>} />
       <Route path="/direcao/matriculas" element={<ProtectedRoute allowedRoles={["direcao"]}><Matriculas /></ProtectedRoute>} />
+      <Route path="/direcao/matriculas/importar" element={<ProtectedRoute allowedRoles={["direcao", "coordenacao", "secretaria"]}><ImportarMatriculas /></ProtectedRoute>} />
       <Route path="/direcao/turmas" element={<ProtectedRoute allowedRoles={["direcao", "coordenacao"]}><TurmasCoordenacao /></ProtectedRoute>} />
       <Route path="/direcao/interessados" element={<ProtectedRoute allowedRoles={["direcao", "coordenacao"]}><Interessados /></ProtectedRoute>} />
       <Route path="/direcao/cobrancas" element={<ProtectedRoute allowedRoles={["direcao"]}><GestaoCobrancas /></ProtectedRoute>} />
