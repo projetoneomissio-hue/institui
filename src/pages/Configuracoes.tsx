@@ -1,25 +1,33 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUnidade } from "@/contexts/UnidadeContext";
+import { useAllFeatures, type FeatureKey } from "@/contexts/FeatureContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { User, Lock, Bell, Loader2, Building2, TrendingUp, ChevronRight, LayoutGrid, ShieldCheck, Mail } from "lucide-react";
+import {
+  User, Lock, Bell, Loader2, Building2, TrendingUp, ChevronRight,
+  LayoutGrid, ShieldCheck, Mail, Sliders, Heart, GraduationCap,
+  DollarSign, Calendar, Users, Share2, Globe, CheckCircle2,
+} from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect } from "react";
 import { formatCPF, unmaskCPF, validateCPF } from "@/utils/cpf";
 import { UnitSettingsForm } from "@/components/direcao/UnitSettingsForm";
 import { cn } from "@/lib/utils";
 
+// ---------------------------------------------------------------------------
+// Schemas
+// ---------------------------------------------------------------------------
 const profileSchema = z.object({
   name: z.string().trim().min(3, "Nome deve ter pelo menos 3 caracteres").max(100, "Nome muito longo"),
   email: z.string().trim().email("Email inválido").max(255, "Email muito longo"),
@@ -31,16 +39,13 @@ const profileSchema = z.object({
     return clean.length === 11 && validateCPF(clean);
   }
   return true;
-}, {
-  message: "CPF inválido",
-  path: ["cpf"],
-});
+}, { message: "CPF inválido", path: ["cpf"] });
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(6, "Senha atual é obrigatória"),
-  newPassword: z.string().min(6, "Nova senha deve ter pelo menos 6 caracteres").max(100, "Senha muito longa"),
+  newPassword: z.string().min(6, "Nova senha deve ter pelo menos 6 caracteres").max(100),
   confirmPassword: z.string().min(6, "Confirmação é obrigatória"),
-}).refine((data) => data.newPassword === data.confirmPassword, {
+}).refine((d) => d.newPassword === d.confirmPassword, {
   message: "As senhas não coincidem",
   path: ["confirmPassword"],
 });
@@ -48,13 +53,104 @@ const passwordSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 
+// ---------------------------------------------------------------------------
+// Definição dos módulos (para a aba Módulos)
+// ---------------------------------------------------------------------------
+const MODULES: { key: FeatureKey; label: string; description: string; icon: React.ElementType; color: string }[] = [
+  {
+    key: "saude",
+    label: "Saúde & PNE",
+    description: "Anamnese dos participantes, laudos médicos e necessidades especiais (PNE/PCD).",
+    icon: Heart,
+    color: "text-rose-500 bg-rose-500/10",
+  },
+  {
+    key: "predio",
+    label: "Espaço Físico",
+    description: "Gestão de custos operacionais, locações de salas e controle de funcionários.",
+    icon: Building2,
+    color: "text-orange-500 bg-orange-500/10",
+  },
+  {
+    key: "academico",
+    label: "Acadêmico",
+    description: "Grade de avaliações, registro de notas, chamada e controle por bimestre.",
+    icon: GraduationCap,
+    color: "text-blue-500 bg-blue-500/10",
+  },
+  {
+    key: "comissoes",
+    label: "Comissões",
+    description: "Cálculo e controle de comissões para instrutores e professores.",
+    icon: DollarSign,
+    color: "text-emerald-500 bg-emerald-500/10",
+  },
+  {
+    key: "calendario",
+    label: "Calendário",
+    description: "Calendário de eventos, feriados e datas importantes da instituição.",
+    icon: Calendar,
+    color: "text-violet-500 bg-violet-500/10",
+  },
+  {
+    key: "voluntarios",
+    label: "Voluntários",
+    description: "Gestão de voluntários e acesso para perfis de secretaria e atendimento.",
+    icon: Users,
+    color: "text-cyan-500 bg-cyan-500/10",
+  },
+  {
+    key: "indicacoes",
+    label: "Indicações",
+    description: "Sistema de referência: rastreie quem indicou cada novo membro cadastrado.",
+    icon: Share2,
+    color: "text-amber-500 bg-amber-500/10",
+  },
+  {
+    key: "landing_publica",
+    label: "Site Público",
+    description: "Landing page pública da instituição com formulário de matrícula online.",
+    icon: Globe,
+    color: "text-indigo-500 bg-indigo-500/10",
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Componente principal
+// ---------------------------------------------------------------------------
 const Configuracoes = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { currentUnidade, refreshUnidade } = useUnidade();
+  const allFeatures = useAllFeatures();
+
   const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
   const [activeTab, setActiveTab] = useState("profile");
+  const [localFlags, setLocalFlags] = useState<Record<FeatureKey, boolean>>(allFeatures);
+  const [flagsSaved, setFlagsSaved] = useState(false);
 
+  // Sincroniza localFlags quando unidade muda
+  useEffect(() => {
+    setLocalFlags(allFeatures);
+  }, [currentUnidade?.id]);
+
+  // ---------------------------------------------------------------------------
+  // Menu lateral
+  // ---------------------------------------------------------------------------
+  const settingsMenu = [
+    { id: "profile",      label: "Meu Perfil",   description: "Informações básicas e contato",        icon: User      },
+    { id: "security",     label: "Segurança",     description: "Senha e proteção da conta",             icon: Lock      },
+    { id: "preferences",  label: "Preferências",  description: "Notificações e aparência",              icon: Bell      },
+    ...(user?.activeRole === "direcao" ? [
+      { id: "organization", label: "Organização", description: "Identidade visual e dados da unidade",  icon: Building2 },
+      { id: "modules",      label: "Módulos",     description: "Ative ou desative funcionalidades",     icon: Sliders   },
+    ] : []),
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Dados do perfil
+  // ---------------------------------------------------------------------------
   const { data: profile, isLoading } = useQuery({
     queryKey: ["user-profile-settings", user?.id],
     queryFn: async () => {
@@ -70,33 +166,33 @@ const Configuracoes = () => {
     enabled: !!user?.id,
   });
 
-  const settingsMenu = [
-    { 
-      id: "profile", 
-      label: "Meu Perfil", 
-      description: "Informações básicas e contato",
-      icon: User 
+  // ---------------------------------------------------------------------------
+  // Mutation — feature flags
+  // ---------------------------------------------------------------------------
+  const saveModulesMutation = useMutation({
+    mutationFn: async (flags: Record<FeatureKey, boolean>) => {
+      if (!currentUnidade?.id) throw new Error("Nenhuma unidade selecionada");
+      const { error } = await supabase
+        .from("unidades")
+        .update({ feature_flags: flags })
+        .eq("id", currentUnidade.id);
+      if (error) throw error;
     },
-    { 
-      id: "security", 
-      label: "Segurança", 
-      description: "Senha e proteção da conta",
-      icon: Lock 
+    onSuccess: async () => {
+      await refreshUnidade();
+      queryClient.invalidateQueries({ queryKey: ["unidade"] });
+      setFlagsSaved(true);
+      setTimeout(() => setFlagsSaved(false), 3000);
+      toast({ title: "Módulos salvos", description: "As configurações foram aplicadas para todos os usuários desta unidade." });
     },
-    { 
-      id: "preferences", 
-      label: "Preferências", 
-      description: "Notificações e aparência",
-      icon: Bell 
+    onError: (err: any) => {
+      toast({ title: "Erro ao salvar módulos", description: err.message, variant: "destructive" });
     },
-    ...(user?.activeRole === 'direcao' ? [{ 
-      id: "organization", 
-      label: "Organização", 
-      description: "Identidade visual e dados da unidade",
-      icon: Building2 
-    }] : []),
-  ];
+  });
 
+  // ---------------------------------------------------------------------------
+  // Notificações
+  // ---------------------------------------------------------------------------
   const requestNotificationPermission = async () => {
     const permission = await Notification.requestPermission();
     setNotificationPermission(permission);
@@ -107,14 +203,12 @@ const Configuracoes = () => {
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // Formulário de perfil
+  // ---------------------------------------------------------------------------
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      cpf: "",
-      phone: "",
-    },
+    defaultValues: { name: "", email: "", cpf: "", phone: "" },
   });
 
   useEffect(() => {
@@ -134,66 +228,42 @@ const Configuracoes = () => {
       const cleanCPF = data.cpf ? unmaskCPF(data.cpf) : null;
       const { error } = await supabase
         .from("profiles")
-        .update({
-          nome_completo: data.name,
-          // email: data.email, // Email change usually requires Supabase Auth email change flow
-          cpf: cleanCPF,
-          telefone: data.phone,
-        })
+        .update({ nome_completo: data.name, cpf: cleanCPF, telefone: data.phone })
         .eq("id", user.id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-profile-settings", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["user-profile-progress", user?.id] });
-      toast({
-        title: "Perfil atualizado",
-        description: "Suas informações foram atualizadas com sucesso.",
-      });
+      toast({ title: "Perfil atualizado", description: "Suas informações foram atualizadas com sucesso." });
     },
     onError: (error) => {
-      toast({
-        title: "Erro ao atualizar",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  });
-
-  const passwordForm = useForm<PasswordFormValues>({
-    resolver: zodResolver(passwordSchema),
-    defaultValues: {
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
+      toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" });
     },
   });
 
-  const onProfileSubmit = (data: ProfileFormValues) => {
-    updateProfileMutation.mutate(data);
-  };
+  // ---------------------------------------------------------------------------
+  // Formulário de senha
+  // ---------------------------------------------------------------------------
+  const passwordForm = useForm<PasswordFormValues>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" },
+  });
 
   const onPasswordSubmit = async (data: PasswordFormValues) => {
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: data.newPassword
-      });
+      const { error } = await supabase.auth.updateUser({ password: data.newPassword });
       if (error) throw error;
-      
-      toast({
-        title: "Senha alterada",
-        description: "Sua senha foi alterada com sucesso.",
-      });
+      toast({ title: "Senha alterada", description: "Sua senha foi alterada com sucesso." });
       passwordForm.reset();
     } catch (error: any) {
-      toast({
-        title: "Erro ao alterar senha",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao alterar senha", description: error.message, variant: "destructive" });
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // Loading
+  // ---------------------------------------------------------------------------
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -204,15 +274,16 @@ const Configuracoes = () => {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
   return (
     <DashboardLayout>
       <div className="min-h-screen bg-background/50">
         <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-8">
           {/* Header */}
           <div className="flex flex-col gap-2">
-            <h1 className="text-4xl font-extrabold tracking-tight text-foreground">
-              Configurações
-            </h1>
+            <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Configurações</h1>
             <p className="text-muted-foreground text-lg max-w-2xl">
               Gerencie sua conta pessoal e as diretrizes visuais da sua organização em um só lugar.
             </p>
@@ -228,8 +299,8 @@ const Configuracoes = () => {
                     onClick={() => setActiveTab(item.id)}
                     className={cn(
                       "flex items-center gap-4 p-4 rounded-xl transition-all duration-300 group text-left",
-                      activeTab === item.id 
-                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]" 
+                      activeTab === item.id
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]"
                         : "hover:bg-muted text-muted-foreground hover:text-foreground"
                     )}
                   >
@@ -248,14 +319,11 @@ const Configuracoes = () => {
                         {item.description}
                       </span>
                     </div>
-                    {activeTab === item.id && (
-                      <ChevronRight className="h-4 w-4 ml-auto shrink-0 opacity-50" />
-                    )}
+                    {activeTab === item.id && <ChevronRight className="h-4 w-4 ml-auto shrink-0 opacity-50" />}
                   </button>
                 ))}
               </nav>
 
-              {/* Status Section */}
               <div className="mt-8 p-6 rounded-2xl border border-dashed border-border/60 bg-muted/20 opacity-60">
                 <div className="flex items-center gap-3 mb-2">
                   <ShieldCheck className="h-4 w-4 text-primary" />
@@ -269,6 +337,8 @@ const Configuracoes = () => {
 
             {/* Content Area */}
             <main className="flex-1 min-w-0 pb-10">
+
+              {/* ── PERFIL ─────────────────────────────────────────────── */}
               {activeTab === "profile" && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <Card className="border-border/50 shadow-xl shadow-black/5 bg-card">
@@ -285,85 +355,58 @@ const Configuracoes = () => {
                     </CardHeader>
                     <CardContent className="pt-10">
                       <Form {...profileForm}>
-                        <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-8">
+                        <form onSubmit={profileForm.handleSubmit((d) => updateProfileMutation.mutate(d))} className="space-y-8">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                            <FormField
-                              control={profileForm.control}
-                              name="name"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Nome Completo</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="Seu nome completo" {...field} className="h-12 bg-background/50 border-border/50 text-base" />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                            <FormField control={profileForm.control} name="name" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Nome Completo</FormLabel>
+                                <FormControl><Input placeholder="Seu nome completo" {...field} className="h-12 bg-background/50 border-border/50 text-base" /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
 
-                            <FormField
-                              control={profileForm.control}
-                              name="email"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-xs font-bold uppercase tracking-wide text-muted-foreground">E-mail Principal</FormLabel>
-                                  <FormControl>
-                                    <div className="relative">
-                                      <Input type="email" {...field} disabled className="h-12 bg-muted/40 border-border/30 pl-10 opacity-70" />
-                                      <Mail className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground/50" />
-                                    </div>
-                                  </FormControl>
-                                  <FormDescription className="text-[10px] flex items-center gap-1 mt-1.5">
-                                    <Lock className="h-3 w-3" /> E-mail usado para login (Gestão Centralizada)
-                                  </FormDescription>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                            <FormField control={profileForm.control} name="email" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs font-bold uppercase tracking-wide text-muted-foreground">E-mail Principal</FormLabel>
+                                <FormControl>
+                                  <div className="relative">
+                                    <Input type="email" {...field} disabled className="h-12 bg-muted/40 border-border/30 pl-10 opacity-70" />
+                                    <Mail className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground/50" />
+                                  </div>
+                                </FormControl>
+                                <FormDescription className="text-[10px] flex items-center gap-1 mt-1.5">
+                                  <Lock className="h-3 w-3" /> E-mail usado para login (Gestão Centralizada)
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
 
-                            <FormField
-                              control={profileForm.control}
-                              name="cpf"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Documento (CPF)</FormLabel>
-                                  <FormControl>
-                                    <Input 
-                                      placeholder="000.000.000-00" 
-                                      maxLength={14}
-                                      {...field} 
-                                      className="h-12 bg-background/50 border-border/50"
-                                      onChange={(e) => field.onChange(formatCPF(e.target.value))}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                            <FormField control={profileForm.control} name="cpf" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Documento (CPF)</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="000.000.000-00" maxLength={14} {...field} className="h-12 bg-background/50 border-border/50"
+                                    onChange={(e) => field.onChange(formatCPF(e.target.value))} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
 
-                            <FormField
-                              control={profileForm.control}
-                              name="phone"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Contato Celular</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="(00) 00000-0000" {...field} className="h-12 bg-background/50 border-border/50" />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                            <FormField control={profileForm.control} name="phone" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Contato Celular</FormLabel>
+                                <FormControl><Input placeholder="(00) 00000-0000" {...field} className="h-12 bg-background/50 border-border/50" /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
                           </div>
 
                           <div className="pt-6 border-t border-border/30 flex items-center justify-between">
                             <p className="text-xs text-muted-foreground max-w-[60%] italic">
-                              Última atualização em {new Date().toLocaleDateString('pt-BR')}
+                              Última atualização em {new Date().toLocaleDateString("pt-BR")}
                             </p>
                             <div className="flex gap-3">
-                              <Button type="button" variant="ghost" onClick={() => profileForm.reset()} className="h-12">
-                                Descartar
-                              </Button>
+                              <Button type="button" variant="ghost" onClick={() => profileForm.reset()} className="h-12">Descartar</Button>
                               <Button type="submit" disabled={updateProfileMutation.isPending} className="h-12 px-8 font-bold shadow-lg shadow-primary/20">
                                 {updateProfileMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Salvar Perfil
@@ -377,6 +420,7 @@ const Configuracoes = () => {
                 </div>
               )}
 
+              {/* ── SEGURANÇA ──────────────────────────────────────────── */}
               {activeTab === "security" && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <Card className="border-border/50 shadow-xl shadow-black/5 bg-card">
@@ -394,59 +438,36 @@ const Configuracoes = () => {
                     <CardContent className="pt-10">
                       <Form {...passwordForm}>
                         <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-6 max-w-xl mx-auto">
-                          <FormField
-                            control={passwordForm.control}
-                            name="currentPassword"
-                            render={({ field }) => (
+                          <FormField control={passwordForm.control} name="currentPassword" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Senha Atual</FormLabel>
+                              <FormControl><Input type="password" placeholder="••••••••" {...field} className="h-12 border-border/50" /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField control={passwordForm.control} name="newPassword" render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Senha Atual</FormLabel>
-                                <FormControl>
-                                  <Input type="password" placeholder="••••••••" {...field} className="h-12 border-border/50" />
-                                </FormControl>
+                                <FormLabel>Nova Senha</FormLabel>
+                                <FormControl><Input type="password" placeholder="••••••••" {...field} className="h-12 border-border/50" /></FormControl>
+                                <FormDescription className="text-[10px]">Use pelo menos 6 caracteres e símbolos.</FormDescription>
                                 <FormMessage />
                               </FormItem>
-                            )}
-                          />
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormField
-                              control={passwordForm.control}
-                              name="newPassword"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Nova Senha</FormLabel>
-                                  <FormControl>
-                                    <Input type="password" placeholder="••••••••" {...field} className="h-12 border-border/50" />
-                                  </FormControl>
-                                  <FormDescription className="text-[10px]">
-                                    Use pelo menos 6 caracteres e símbolos.
-                                  </FormDescription>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-
-                            <FormField
-                              control={passwordForm.control}
-                              name="confirmPassword"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Confirmar Nova Senha</FormLabel>
-                                  <FormControl>
-                                    <Input type="password" placeholder="••••••••" {...field} className="h-12 border-border/50" />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                            )} />
+                            <FormField control={passwordForm.control} name="confirmPassword" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Confirmar Nova Senha</FormLabel>
+                                <FormControl><Input type="password" placeholder="••••••••" {...field} className="h-12 border-border/50" /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
                           </div>
-
                           <div className="pt-10 flex flex-col gap-4">
                             <Button type="submit" className="h-12 w-full font-bold bg-amber-600 hover:bg-amber-700 shadow-lg shadow-amber-600/20">
                               Atualizar Senha de Acesso
                             </Button>
                             <Button type="button" variant="outline" onClick={() => passwordForm.reset()} className="h-12 w-full">
-                              Lembrar senha antiga
+                              Cancelar
                             </Button>
                           </div>
                         </form>
@@ -456,6 +477,7 @@ const Configuracoes = () => {
                 </div>
               )}
 
+              {/* ── PREFERÊNCIAS ───────────────────────────────────────── */}
               {activeTab === "preferences" && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
                   <Card className="border-border/50 shadow-xl shadow-black/5 bg-card">
@@ -486,7 +508,6 @@ const Configuracoes = () => {
                           {notificationPermission === "granted" ? "Ativado" : "Ativar Agora"}
                         </Button>
                       </div>
-
                       <div className="flex items-center justify-between py-5">
                         <div className="space-y-1">
                           <Label className="text-base" htmlFor="email-notifications">Resumos por E-mail</Label>
@@ -496,12 +517,11 @@ const Configuracoes = () => {
                         </div>
                         <Switch id="email-notifications" defaultChecked />
                       </div>
-
                       <div className="flex items-center justify-between py-5">
                         <div className="space-y-1">
                           <Label className="text-base" htmlFor="matriculas-notifications">Status de Matrículas</Label>
                           <p className="text-xs text-muted-foreground">
-                            Notificar quando um aluno for aprovado ou concluir curso.
+                            Notificar quando um participante for aprovado ou concluir programa.
                           </p>
                         </div>
                         <Switch id="matriculas-notifications" defaultChecked />
@@ -510,17 +530,17 @@ const Configuracoes = () => {
                   </Card>
 
                   <Card className="border-border/50 shadow-xl shadow-black/5 bg-card">
-                    <CardHeader className="border-b border-border/30 pb-6 flex flex-row items-center gap-4 space-y-0 text-amber-500">
+                    <CardHeader className="border-b border-border/30 pb-6 flex flex-row items-center gap-4 space-y-0">
                       <div className="h-10 w-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
                         <LayoutGrid className="h-5 w-5 text-indigo-500" />
                       </div>
                       <div>
-                        <CardTitle className="text-xl text-foreground">Aparência do Workspace</CardTitle>
+                        <CardTitle className="text-xl">Aparência do Workspace</CardTitle>
                         <CardDescription>Personalize sua visão individual do sistema</CardDescription>
                       </div>
                     </CardHeader>
                     <CardContent className="divide-y divide-border/30 pt-4">
-                      <div className="flex items-center justify-between py-5 text-balance">
+                      <div className="flex items-center justify-between py-5">
                         <div className="space-y-1">
                           <Label className="text-base" htmlFor="compact-mode">Foco e Produtividade (Modo Compacto)</Label>
                           <p className="text-xs text-muted-foreground">
@@ -529,13 +549,10 @@ const Configuracoes = () => {
                         </div>
                         <Switch id="compact-mode" />
                       </div>
-
                       <div className="flex items-center justify-between py-5">
                         <div className="space-y-1">
                           <Label className="text-base" htmlFor="animations">Experiência Fluida (Animações)</Label>
-                          <p className="text-xs text-muted-foreground">
-                            Transições suaves entre telas e carregamentos.
-                          </p>
+                          <p className="text-xs text-muted-foreground">Transições suaves entre telas e carregamentos.</p>
                         </div>
                         <Switch id="animations" defaultChecked />
                       </div>
@@ -550,7 +567,8 @@ const Configuracoes = () => {
                 </div>
               )}
 
-              {activeTab === "organization" && user?.activeRole === 'direcao' && (
+              {/* ── ORGANIZAÇÃO ────────────────────────────────────────── */}
+              {activeTab === "organization" && user?.activeRole === "direcao" && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <Card className="border-primary/20 shadow-xl overflow-hidden relative">
                     <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
@@ -575,6 +593,95 @@ const Configuracoes = () => {
                   </Card>
                 </div>
               )}
+
+              {/* ── MÓDULOS ────────────────────────────────────────────── */}
+              {activeTab === "modules" && user?.activeRole === "direcao" && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                  <Card className="border-border/50 shadow-xl shadow-black/5 bg-card">
+                    <CardHeader className="border-b border-border/30 pb-8">
+                      <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                          <Sliders className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-2xl">Módulos da Instituição</CardTitle>
+                          <CardDescription>
+                            Ative apenas as funcionalidades que fazem sentido para a sua organização.
+                            As alterações são aplicadas para todos os usuários desta unidade.
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="pt-6 divide-y divide-border/30">
+                      {MODULES.map((mod) => {
+                        const Icon = mod.icon;
+                        const isOn = localFlags[mod.key];
+                        return (
+                          <div
+                            key={mod.key}
+                            className={cn(
+                              "flex items-center gap-5 py-5 transition-opacity duration-300",
+                              !isOn && "opacity-50"
+                            )}
+                          >
+                            <div className={cn("h-11 w-11 shrink-0 rounded-xl flex items-center justify-center", mod.color)}>
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className="font-semibold text-sm text-foreground">{mod.label}</span>
+                                {isOn ? (
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-emerald-500/40 text-emerald-600 bg-emerald-500/5">
+                                    Ativo
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-border text-muted-foreground">
+                                    Inativo
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground leading-relaxed">{mod.description}</p>
+                            </div>
+                            <Switch
+                              checked={isOn}
+                              onCheckedChange={(checked) =>
+                                setLocalFlags((prev) => ({ ...prev, [mod.key]: checked }))
+                              }
+                              className="shrink-0"
+                            />
+                          </div>
+                        );
+                      })}
+                    </CardContent>
+                  </Card>
+
+                  {/* Botão salvar */}
+                  <div className="flex items-center justify-between pt-2">
+                    <p className="text-xs text-muted-foreground">
+                      As mudanças entram em vigor assim que salvas — sem recarregar a página.
+                    </p>
+                    <Button
+                      size="lg"
+                      onClick={() => saveModulesMutation.mutate(localFlags)}
+                      disabled={saveModulesMutation.isPending}
+                      className={cn(
+                        "h-12 px-10 font-bold shadow-lg shadow-primary/20 gap-2",
+                        flagsSaved && "bg-emerald-600 hover:bg-emerald-700"
+                      )}
+                    >
+                      {saveModulesMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : flagsSaved ? (
+                        <><CheckCircle2 className="h-4 w-4" /> Salvo!</>
+                      ) : (
+                        "Salvar Módulos"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
             </main>
           </div>
         </div>
