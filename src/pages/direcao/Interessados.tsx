@@ -279,6 +279,22 @@ export default function Interessados() {
         }
     });
 
+    const deleteMutation = useMutation({
+        mutationFn: async (id: string) => {
+            const { error } = await supabase
+                .from("solicitacoes_matricula")
+                .delete()
+                .eq("id", id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["direcao-interessados"] });
+            queryClient.invalidateQueries({ queryKey: ["management-leads-counts"] });
+            toast({ title: "Registro deletado" });
+        },
+        onError: () => toast({ title: "Erro ao deletar", variant: "destructive" }),
+    });
+
     const completarFichaMutation = useMutation({
         mutationFn: async ({ id, escola, serie_ano, cpf_responsavel }: { id: string; escola: string; serie_ano: string; cpf_responsavel: string }) => {
             const { error } = await supabase
@@ -301,7 +317,10 @@ export default function Interessados() {
     const filteredLeads = leads?.filter(lead => {
         const matchesSearch = lead.nome_completo.toLowerCase().includes(search.toLowerCase()) ||
                              lead.sobrenome?.toLowerCase().includes(search.toLowerCase());
-        const matchesStatus = filterStatus === "todos" || lead.status === filterStatus;
+        // "todos" esconde rejeitados — aparecem só com filtro explícito "rejeitada"
+        const matchesStatus = filterStatus === "todos"
+            ? lead.status !== "rejeitada"
+            : lead.status === filterStatus;
         return matchesSearch && matchesStatus;
     });
 
@@ -545,17 +564,23 @@ export default function Interessados() {
                                                                 <UserPlus className="h-4 w-4" /> Converter Aluno
                                                             </DropdownMenuItem>
                                                         )}
+                                                        {lead.status !== "rejeitada" && (
+                                                            <DropdownMenuItem
+                                                                className="gap-2 font-medium text-xs p-2 rounded-lg text-orange-600 focus:text-orange-600 focus:bg-orange-50"
+                                                                onClick={() => updateStatusMutation.mutate({ id: lead.id, status: "rejeitada" })}
+                                                            >
+                                                                <Filter className="h-4 w-4" /> Arquivar
+                                                            </DropdownMenuItem>
+                                                        )}
                                                         <DropdownMenuItem
                                                             className="gap-2 font-medium text-xs p-2 rounded-lg text-red-600 focus:text-red-600 focus:bg-red-50"
-                                                            onClick={async () => {
-                                                                if (confirm("Deseja realmente rejeitar esta solicitação?")) {
-                                                                    await solicitacoesService.updateStatus(lead.id, "rejeitada");
-                                                                    queryClient.invalidateQueries({ queryKey: ["direcao-interessados"] });
-                                                                    toast({ title: "Solicitação rejeitada" });
+                                                            onClick={() => {
+                                                                if (confirm(`Deletar "${lead.nome_completo} ${lead.sobrenome || ""}"? Esta ação não pode ser desfeita.`)) {
+                                                                    deleteMutation.mutate(lead.id);
                                                                 }
                                                             }}
                                                         >
-                                                            <Trash2 className="h-4 w-4" /> Rejeitar Lead
+                                                            <Trash2 className="h-4 w-4" /> Deletar
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
