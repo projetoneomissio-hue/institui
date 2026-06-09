@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useUnidade } from "@/contexts/UnidadeContext";
 import { Copy, Mail, Trash2, Link as LinkIcon, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { z } from "zod";
@@ -29,6 +30,7 @@ export default function Convites() {
   const [role, setRole] = useState<"direcao" | "coordenacao" | "professor">("coordenacao");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { currentUnidade } = useUnidade();
 
   // Fetch invitations com status de vinculação
   const { data: invitations, isLoading } = useQuery({
@@ -113,6 +115,7 @@ export default function Convites() {
           token,
           created_by: user?.id,
           expires_at: expiresAt.toISOString(),
+          unidade_id: currentUnidade?.id,
         })
         .select()
         .single();

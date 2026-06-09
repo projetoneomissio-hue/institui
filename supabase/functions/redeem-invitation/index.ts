@@ -151,24 +151,28 @@ serve(async (req) => {
     }
 
     // 3. Usuário Novo
+    const isSelf = invite.metadata?.is_self === true;
     const studentNames: string[] = [];
-    if (invite.metadata?.existing_student_ids && Array.isArray(invite.metadata.existing_student_ids)) {
+
+    if (!isSelf && invite.metadata?.existing_student_ids && Array.isArray(invite.metadata.existing_student_ids)) {
         const { data: students } = await supabaseClient
             .from("alunos")
             .select("nome_completo")
             .in("id", invite.metadata.existing_student_ids);
-        
+
         if (students) {
             studentNames.push(...students.map((s: any) => s.nome_completo));
         }
     }
 
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       status: "new_user",
       role: invite.role,
       token: invite.token,
       email: invite.email,
-      studentNames
+      studentNames,
+      is_self: isSelf,
+      selfName: isSelf ? (invite.metadata?.responsavel_nome ?? "") : null,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -82,6 +82,9 @@ import DashboardSecretaria from "./pages/secretaria/DashboardSecretaria";
 // Shared Management/Secretaria
 import PreCadastro from "./pages/shared/PreCadastro";
 
+// Super-admin (Matriz only)
+import Organizacoes from "./pages/admin/Organizacoes";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -116,9 +119,9 @@ export const AppRoutes = () => {
       <Route path="/professores" element={<ProtectedRoute><Professores /></ProtectedRoute>} />
       <Route path="/financeiro" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />
       <Route path="/financeiro/importar-historico" element={<ProtectedRoute allowedRoles={["direcao"]}><ImportarHistoricoFinanceiro /></ProtectedRoute>} />
-      <Route path="/predio" element={<ProtectedRoute><Predio /></ProtectedRoute>} />
+      <Route path="/predio" element={<ProtectedRoute allowedFeature="predio"><Predio /></ProtectedRoute>} />
       <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
-      <Route path="/calendario" element={<ProtectedRoute><CalendarioEscolar /></ProtectedRoute>} />
+      <Route path="/calendario" element={<ProtectedRoute allowedFeature="calendario"><CalendarioEscolar /></ProtectedRoute>} />
 
       {/* Direção */}
       <Route path="/direcao" element={<Navigate to="/direcao/dashboard" replace />} />
@@ -133,7 +136,7 @@ export const AppRoutes = () => {
       <Route path="/direcao/cobrancas" element={<ProtectedRoute allowedRoles={["direcao"]}><GestaoCobrancas /></ProtectedRoute>} />
       <Route path="/direcao/comunicados" element={<ProtectedRoute allowedRoles={["direcao"]}><Comunicados /></ProtectedRoute>} />
       <Route path="/direcao/pre-cadastro" element={<ProtectedRoute allowedRoles={["direcao"]}><PreCadastro /></ProtectedRoute>} />
-      <Route path="/direcao/landing" element={<ProtectedRoute allowedRoles={["direcao"]}><LandingEditor /></ProtectedRoute>} />
+      <Route path="/direcao/landing" element={<ProtectedRoute allowedRoles={["direcao"]} allowedFeature="landing_publica"><LandingEditor /></ProtectedRoute>} />
 
       {/* Coordenação */}
       <Route path="/coordenacao" element={<Navigate to="/coordenacao/dashboard" replace />} />
@@ -141,17 +144,17 @@ export const AppRoutes = () => {
       <Route path="/coordenacao/turmas" element={<ProtectedRoute allowedRoles={["coordenacao", "direcao"]}><TurmasCoordenacao /></ProtectedRoute>} />
       <Route path="/coordenacao/relatorios" element={<ProtectedRoute allowedRoles={["coordenacao"]}><Relatorios /></ProtectedRoute>} />
       <Route path="/coordenacao/notificacoes" element={<ProtectedRoute allowedRoles={["coordenacao", "direcao"]}><GerenciarNotificacoes /></ProtectedRoute>} />
-      <Route path="/coordenacao/voluntarios" element={<ProtectedRoute allowedRoles={["coordenacao", "direcao"]}><RelatorioVoluntarios /></ProtectedRoute>} />
+      <Route path="/coordenacao/voluntarios" element={<ProtectedRoute allowedRoles={["coordenacao", "direcao"]} allowedFeature="voluntarios"><RelatorioVoluntarios /></ProtectedRoute>} />
 
       {/* Professores */}
       <Route path="/professor" element={<Navigate to="/professor/dashboard" replace />} />
       <Route path="/professor/dashboard" element={<ProtectedRoute allowedRoles={["professor"]}><DashboardProfessor /></ProtectedRoute>} />
       <Route path="/professor/turmas" element={<ProtectedRoute allowedRoles={["professor"]}><Turmas /></ProtectedRoute>} />
-      <Route path="/professor/chamada" element={<ProtectedRoute allowedRoles={["professor"]}><Chamada /></ProtectedRoute>} />
-      <Route path="/professor/avaliacoes" element={<ProtectedRoute allowedRoles={["professor"]}><GradeAvaliacao /></ProtectedRoute>} />
+      <Route path="/professor/chamada" element={<ProtectedRoute allowedRoles={["professor"]} allowedFeature="academico"><Chamada /></ProtectedRoute>} />
+      <Route path="/professor/avaliacoes" element={<ProtectedRoute allowedRoles={["professor"]} allowedFeature="academico"><GradeAvaliacao /></ProtectedRoute>} />
       <Route path="/professor/alunos" element={<ProtectedRoute allowedRoles={["professor"]}><AlunosProfessor /></ProtectedRoute>} />
       <Route path="/professor/observacoes" element={<ProtectedRoute allowedRoles={["professor"]}><Observacoes /></ProtectedRoute>} />
-      <Route path="/professor/comissoes" element={<ProtectedRoute allowedRoles={["professor"]}><Comissoes /></ProtectedRoute>} />
+      <Route path="/professor/comissoes" element={<ProtectedRoute allowedRoles={["professor"]} allowedFeature="comissoes"><Comissoes /></ProtectedRoute>} />
 
       {/* Responsáveis */}
       <Route path="/responsavel" element={<Navigate to="/responsavel/dashboard" replace />} />
@@ -161,7 +164,7 @@ export const AppRoutes = () => {
       <Route path="/responsavel/pagamentos" element={<ProtectedRoute allowedRoles={["responsavel"]}><Pagamentos /></ProtectedRoute>} />
       <Route path="/responsavel/registrar-pagamento" element={<ProtectedRoute allowedRoles={["responsavel"]}><RegistrarPagamento /></ProtectedRoute>} />
       <Route path="/responsavel/relatorios-aluno" element={<ProtectedRoute allowedRoles={["responsavel"]}><RelatoriosAluno /></ProtectedRoute>} />
-      <Route path="/responsavel/anamnese" element={<ProtectedRoute allowedRoles={["responsavel"]}><Anamnese /></ProtectedRoute>} />
+      <Route path="/responsavel/anamnese" element={<ProtectedRoute allowedRoles={["responsavel"]} allowedFeature="saude"><Anamnese /></ProtectedRoute>} />
       <Route path="/responsavel/cadastrar-aluno" element={<ProtectedRoute allowedRoles={["responsavel"]}><CadastrarAluno /></ProtectedRoute>} />
       <Route path="/responsavel/pagamento-sucesso" element={<ProtectedRoute allowedRoles={["responsavel"]}><PagamentoSucesso /></ProtectedRoute>} />
 
@@ -172,6 +175,9 @@ export const AppRoutes = () => {
       <Route path="/secretaria/nova-matricula" element={<ProtectedRoute allowedRoles={["secretaria"]}><NovaMatricula /></ProtectedRoute>} />
       <Route path="/secretaria/alunos" element={<ProtectedRoute allowedRoles={["secretaria"]}><Alunos /></ProtectedRoute>} />
       <Route path="/secretaria/pre-cadastro" element={<ProtectedRoute allowedRoles={["secretaria", "direcao"]}><PreCadastro /></ProtectedRoute>} />
+
+      {/* Super-admin — somente direção da Matriz */}
+      <Route path="/admin/organizacoes" element={<ProtectedRoute allowedRoles={["direcao"]}><Organizacoes /></ProtectedRoute>} />
 
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="/ajuda" element={<ProtectedRoute><Ajuda /></ProtectedRoute>} />

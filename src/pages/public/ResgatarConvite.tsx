@@ -60,6 +60,9 @@ const ResgatarConvite = () => {
                 setInvitationData(data);
                 setStep("signup");
                 setEmail(data.email);
+                if (data.is_self && data.selfName) {
+                    setName(data.selfName);
+                }
             }
         } catch (err) {
             console.error("Erro na verificação:", err);
@@ -122,7 +125,7 @@ const ResgatarConvite = () => {
                         <Key className="text-primary h-6 w-6" />
                     </div>
                     <CardTitle className="text-3xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-                        {step === "success" ? "Bem-vindo ao Zafen!" : "Resgatar Convite"}
+                        {step === "success" ? "Bem-vindo!" : "Resgatar Convite"}
                     </CardTitle>
                     <CardDescription className="text-gray-400">
                         {step === "verify" && "Insira os dados do e-mail recebido."}
@@ -167,16 +170,24 @@ const ResgatarConvite = () => {
 
                     {step === "signup" && (
                         <form onSubmit={handleSignup} className="space-y-6">
-                            {invitationData?.studentNames?.length > 0 && (
-                                <div className="p-4 bg-primary/10 rounded-xl border border-primary/20 mb-4">
+                            {/* Auto-matrícula: responsável é o próprio aluno */}
+                            {invitationData?.is_self ? (
+                                <div className="p-4 bg-primary/10 rounded-xl border border-primary/20">
+                                    <p className="text-xs text-primary uppercase font-bold tracking-wider mb-1">Sua matrícula pessoal</p>
+                                    <p className="text-sm text-gray-300">Seu perfil de aluno será criado automaticamente junto com sua conta.</p>
+                                </div>
+                            ) : invitationData?.studentNames?.length > 0 && (
+                                <div className="p-4 bg-primary/10 rounded-xl border border-primary/20">
                                     <p className="text-xs text-primary uppercase font-bold tracking-wider mb-1">Alunos Vinculados:</p>
                                     <p className="text-sm text-gray-200">{invitationData.studentNames.join(", ")}</p>
                                 </div>
                             )}
-                            
+
                             <div className="space-y-2">
-                                <Label htmlFor="signup-name" className="text-gray-300">Seu Nome Completo</Label>
-                                <Input 
+                                <Label htmlFor="signup-name" className="text-gray-300">
+                                    {invitationData?.is_self ? "Confirme seu Nome Completo" : "Seu Nome Completo"}
+                                </Label>
+                                <Input
                                     id="signup-name"
                                     placeholder="Como quer ser chamado?"
                                     value={name}
@@ -189,7 +200,7 @@ const ResgatarConvite = () => {
 
                             <div className="space-y-2">
                                 <Label htmlFor="signup-password" className="text-gray-300">Crie uma Senha Forte</Label>
-                                <Input 
+                                <Input
                                     id="signup-password"
                                     type="password"
                                     placeholder="Mínimo 6 caracteres"
@@ -232,7 +243,10 @@ const ResgatarConvite = () => {
                             <div className="space-y-2">
                                 <h3 className="text-xl font-bold text-white">Tudo Pronto!</h3>
                                 <p className="text-gray-400">
-                                    Sua conta foi ativada e seus alunos foram migrados com sucesso.
+                                    {invitationData?.is_self
+                                        ? "Sua conta e seu perfil de aluno foram criados. Faça login para se matricular em uma atividade."
+                                        : "Sua conta foi ativada e seus alunos foram vinculados com sucesso."
+                                    }
                                 </p>
                             </div>
                             <Button className="w-full bg-primary" onClick={() => navigate("/login")}>

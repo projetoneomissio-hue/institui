@@ -98,8 +98,16 @@ export default function MatriculaOnline() {
 
         try {
             const values = form.getValues();
+
+            // Deduplicação: reutiliza lead ativo com o mesmo WhatsApp nessa unidade
+            let resolvedId = solicitacaoId;
+            if (!resolvedId) {
+                resolvedId = await solicitacoesService.findActiveByWhatsapp(values.whatsapp, unidade.id);
+                if (resolvedId) setSolicitacaoId(resolvedId);
+            }
+
             const payload = {
-                id: solicitacaoId || undefined,
+                id: resolvedId || undefined,
                 nome_completo: values.nome_completo,
                 sobrenome: values.sobrenome,
                 whatsapp: values.whatsapp,
@@ -107,7 +115,6 @@ export default function MatriculaOnline() {
                 unidade_id: unidade.id,
                 status: "interessado",
                 atividade_desejada: atividadeUrl || "Geral",
-                // Para eu_mesmo, o e-mail próprio já é do responsável
                 ...(participantType === "eu_mesmo" && values.email_proprio
                     ? { email_responsavel: values.email_proprio, nome_responsavel: `${values.nome_completo} ${values.sobrenome}`.trim() }
                     : {}),

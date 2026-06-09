@@ -7,7 +7,8 @@ import { ManualDirecao } from "@/components/ajuda/ManualDirecao";
 import { ManualSecretaria } from "@/components/ajuda/ManualSecretaria";
 import { ManualProfessor } from "@/components/ajuda/ManualProfessor";
 import { ManualCoordenacao } from "@/components/ajuda/ManualCoordenacao";
-import { BookOpen, HelpCircle } from "lucide-react";
+import { JornadaAluno } from "@/components/ajuda/JornadaAluno";
+import { BookOpen, HelpCircle, Route } from "lucide-react";
 
 const Ajuda = () => {
   const { activeRole } = useUserRole();
@@ -16,10 +17,18 @@ const Ajuda = () => {
 
   // Definição da hierarquia e visibilidade
   const tabsConfig = [
-    { 
-      id: "direcao", 
-      label: "Direção Estratégica", 
-      component: <ManualDirecao />, 
+    {
+      id: "jornada",
+      label: "Jornada do Aluno",
+      component: <JornadaAluno />,
+      roles: ["admin", "direcao", "coordenacao", "secretaria"],
+      color: "bg-primary",
+      icon: <Route className="h-3.5 w-3.5" />,
+    },
+    {
+      id: "direcao",
+      label: "Direção Estratégica",
+      component: <ManualDirecao />,
       roles: ["admin", "direcao"],
       color: "bg-success"
     },
@@ -79,11 +88,12 @@ const Ajuda = () => {
           <Tabs defaultValue={defaultTab} className="space-y-8 w-full">
             <TabsList className="bg-card border shadow-sm p-1 rounded-xl h-auto flex flex-wrap gap-2">
               {visibleTabs.map(tab => (
-                <TabsTrigger 
+                <TabsTrigger
                   key={tab.id}
-                  value={tab.id} 
-                  className={`rounded-lg py-2.5 px-4 data-[state=active]:${tab.color} data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold text-sm`}
+                  value={tab.id}
+                  className={`rounded-lg py-2.5 px-4 data-[state=active]:${tab.color} data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold text-sm flex items-center gap-1.5`}
                 >
+                  {(tab as any).icon}
                   {tab.label}
                 </TabsTrigger>
               ))}

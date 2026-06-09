@@ -56,6 +56,24 @@ export const solicitacoesService = {
     return data;
   },
 
+  /**
+   * Retorna o id de um lead ativo (interessado ou pendente) com o mesmo WhatsApp
+   * na mesma unidade. Usado para evitar duplicatas no formulário público.
+   */
+  async findActiveByWhatsapp(whatsapp: string, unidadeId: string): Promise<string | null> {
+    const { data } = await supabase
+      .from("solicitacoes_matricula")
+      .select("id")
+      .eq("whatsapp", whatsapp)
+      .eq("unidade_id", unidadeId)
+      .in("status", ["interessado", "pendente"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return data?.id ?? null;
+  },
+
   /** Busca contagem de solicitações por status para o dashboard */
   async fetchCounts() {
     const { data, error } = await supabase

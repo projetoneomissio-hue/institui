@@ -43,15 +43,28 @@
 
 import { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { useAuth, UserRole } from "@/contexts/AuthContext";
+import { useAllFeatures, FeatureKey } from "@/contexts/FeatureContext";
 
 interface ProtectedRouteProps {
   children: ReactNode;
   allowedRoles?: UserRole[];
+  allowedFeature?: FeatureKey;
 }
 
-export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-  const { isAuthenticated, user } = useAuth();
+export const ProtectedRoute = ({ children, allowedRoles, allowedFeature }: ProtectedRouteProps) => {
+  const { isAuthenticated, user, loading } = useAuth();
+  const features = useAllFeatures();
+
+  // Aguarda session + perfil carregarem antes de decidir qualquer redirect
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   // UX: Redirect to login if not authenticated
   if (!isAuthenticated) {
@@ -62,6 +75,11 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
   // NOTE: This is UX only. Real security is in RLS policies.
   // Check ALL assigned roles (not just activeRole) so multi-role users can access all their routes
   if (allowedRoles && user && !user.roles.some(r => allowedRoles.includes(r))) {
+    return <Navigate to="/" replace />;
+  }
+
+  // UX: Redirect to home if the feature module is disabled for this unit
+  if (allowedFeature && !features[allowedFeature]) {
     return <Navigate to="/" replace />;
   }
 

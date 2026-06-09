@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUnidade } from "@/contexts/UnidadeContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Info } from "lucide-react";
@@ -21,6 +22,7 @@ const matriculaSchema = z.object({
 const NovaMatricula = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { currentUnidade } = useUnidade();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -145,19 +147,39 @@ const NovaMatricula = () => {
           });
         }
 
-        // Envia aviso interno para a Direção/Secretaria 
-        // (utilizando um email geral de atendimento/diretoria - mockado caso sem settings)
-        await supabase.functions.invoke('send-email', {
-          body: {
-            to: 'diretoria@neomissio.com.br', // Ideal refatorar DB admin params no futuro
-            type: 'nova_matricula_admin',
-            data: {
-              nomeAluno: alunoName,
-              atividade: atividadeName,
-              unidade: "Matriz" // Exemplo estático
-            }
+        // Busca e-mail de um diretor ou secretaria da unidade atual
+        let adminEmail: string | null = null;
+        if (currentUnidade?.id) {
+          const { data: adminUsers } = await supabase
+            .from('user_unidades')
+            .select('user_id')
+            .eq('unidade_id', currentUnidade.id)
+            .in('role', ['direcao', 'secretaria'])
+            .limit(1);
+
+          if (adminUsers?.[0]?.user_id) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('email')
+              .eq('id', adminUsers[0].user_id)
+              .single();
+            adminEmail = profile?.email ?? null;
           }
-        });
+        }
+
+        if (adminEmail) {
+          await supabase.functions.invoke('send-email', {
+            body: {
+              to: adminEmail,
+              type: 'nova_matricula_admin',
+              data: {
+                nomeAluno: alunoName,
+                atividade: atividadeName,
+                unidade: currentUnidade?.nome ?? 'Unidade',
+              }
+            }
+          });
+        }
       } catch (e) {
         console.error("Erro silencioso enviando emails da matrícula:", e);
       }

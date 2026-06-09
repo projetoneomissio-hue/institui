@@ -15,7 +15,7 @@ import {
 import { useUnidade } from "@/contexts/UnidadeContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Plus, Eye, Search, Phone, Calendar, User, Activity, AlertCircle, Link as LinkIcon, Loader2, Copy, Check, X, Upload
+  Plus, Eye, Search, Phone, Calendar, User, Activity, AlertCircle, Link as LinkIcon, Loader2, Copy, Check, X, Upload, Clock
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -563,23 +563,26 @@ const Matriculas = () => {
     queryFn: matriculasService.fetchAll,
   });
 
+  const pendentesCount = useMemo(() => {
+    if (!matriculas) return 0;
+    return matriculas.filter((m: any) => m.status === "pendente").length;
+  }, [matriculas]);
+
   const filteredData = useMemo(() => {
     if (!matriculas) return [];
-    
+
     return matriculas.filter((m: any) => {
-      // Tab filter
       if (activeTab !== "todas" && m.status !== activeTab) return false;
-      
-      // Search filter
+
       if (search) {
         const query = search.toLowerCase();
         const nomeAluno = m.aluno?.nome_completo?.toLowerCase() || "";
         const nomeTurma = m.turma?.nome?.toLowerCase() || "";
         const nomeAtividade = m.turma?.atividade?.nome?.toLowerCase() || "";
-        
+
         return nomeAluno.includes(query) || nomeTurma.includes(query) || nomeAtividade.includes(query);
       }
-      
+
       return true;
     });
   }, [matriculas, search, activeTab]);
@@ -625,13 +628,41 @@ const Matriculas = () => {
           </Button>
         </div>
 
+        {/* Pending alert banner */}
+        {pendentesCount > 0 && (
+          <div
+            className="flex items-center gap-3 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl cursor-pointer hover:bg-yellow-500/15 transition-colors"
+            onClick={() => setActiveTab("pendente")}
+          >
+            <div className="h-9 w-9 rounded-xl bg-yellow-500/20 flex items-center justify-center shrink-0">
+              <Clock className="h-5 w-5 text-yellow-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-yellow-700 dark:text-yellow-400">
+                {pendentesCount} {pendentesCount === 1 ? "matrícula aguardando" : "matrículas aguardando"} aprovação
+              </p>
+              <p className="text-xs text-yellow-600/70 dark:text-yellow-500/70">Clique para ver e aprovar</p>
+            </div>
+            <Badge className="bg-yellow-500 text-white border-none font-bold text-sm px-3 py-1 shadow-sm shadow-yellow-500/30">
+              {pendentesCount}
+            </Badge>
+          </div>
+        )}
+
         {/* Filters Bar */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 sm:gap-4 bg-muted/30 p-2 rounded-2xl border border-primary/5">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
             <TabsList className="bg-transparent h-11">
               <TabsTrigger value="todas" className="rounded-xl px-4 font-bold data-[state=active]:bg-background data-[state=active]:shadow-sm">Todas</TabsTrigger>
               <TabsTrigger value="ativa" className="rounded-xl px-4 font-bold data-[state=active]:bg-green-500/10 data-[state=active]:text-green-600">Ativas</TabsTrigger>
-              <TabsTrigger value="pendente" className="rounded-xl px-4 font-bold data-[state=active]:bg-yellow-500/10 data-[state=active]:text-yellow-600">Pendentes</TabsTrigger>
+              <TabsTrigger value="pendente" className="rounded-xl px-4 font-bold data-[state=active]:bg-yellow-500/10 data-[state=active]:text-yellow-600">
+                Pendentes
+                {pendentesCount > 0 && (
+                  <span className="ml-2 inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-yellow-500 text-white text-[10px] font-bold">
+                    {pendentesCount}
+                  </span>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="cancelada" className="rounded-xl px-4 font-bold data-[state=active]:bg-red-500/10 data-[state=active]:text-red-600">Canceladas</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -677,9 +708,14 @@ const Matriculas = () => {
                   </tr>
                 ) : (
                   filteredData.map((m: any) => (
-                    <tr 
-                      key={m.id} 
-                      className="hover:bg-primary/[0.02] transition-colors cursor-pointer group"
+                    <tr
+                      key={m.id}
+                      className={cn(
+                        "transition-colors cursor-pointer group",
+                        m.status === "pendente"
+                          ? "bg-yellow-500/[0.03] hover:bg-yellow-500/[0.07] border-l-2 border-l-yellow-500"
+                          : "hover:bg-primary/[0.02]"
+                      )}
                       onClick={() => setSelectedMatricula(m)}
                     >
                       <td className="px-6 py-4">
@@ -711,24 +747,37 @@ const Matriculas = () => {
                         {m.data_inicio ? format(new Date(m.data_inicio), "dd/MM/yyyy") : "-"}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-[#25D366] hover:bg-[#25D366]/10"
-                            onClick={(e) => handleWhatsApp(e, m)}
-                            title="WhatsApp"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg>
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-primary hover:bg-primary/10"
-                            title="Detalhes"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          {m.status === "pendente" ? (
+                            <Button
+                              size="sm"
+                              className="h-8 px-3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-xs gap-1.5 shadow-sm shadow-yellow-500/20 opacity-80 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => { e.stopPropagation(); setSelectedMatricula(m); }}
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                              Aprovar
+                            </Button>
+                          ) : (
+                            <div className="flex items-center gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-[#25D366] hover:bg-[#25D366]/10"
+                                onClick={(e) => handleWhatsApp(e, m)}
+                                title="WhatsApp"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg>
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-primary hover:bg-primary/10"
+                                title="Detalhes"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -754,9 +803,14 @@ const Matriculas = () => {
               </div>
             ) : (
               filteredData.map((m: any) => (
-                <div 
-                  key={m.id} 
-                  className="p-4 space-y-4 hover:bg-primary/[0.02] active:bg-primary/[0.05] transition-colors"
+                <div
+                  key={m.id}
+                  className={cn(
+                    "p-4 space-y-4 transition-colors",
+                    m.status === "pendente"
+                      ? "bg-yellow-500/[0.04] border-l-2 border-l-yellow-500 active:bg-yellow-500/10"
+                      : "hover:bg-primary/[0.02] active:bg-primary/[0.05]"
+                  )}
                   onClick={() => setSelectedMatricula(m)}
                 >
                   <div className="flex items-start justify-between">
@@ -791,21 +845,33 @@ const Matriculas = () => {
                   </div>
 
                   <div className="flex items-center gap-2 pt-1">
-                    <Button 
-                      variant="secondary" 
-                      className="flex-1 h-10 gap-2 font-bold bg-primary/10 hover:bg-primary/20 text-primary border-none"
-                    >
-                      <Eye className="h-4 w-4" />
-                      Visualizar
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-10 w-10 border border-[#25D366]/20 text-[#25D366] hover:bg-[#25D366]/10"
-                      onClick={(e) => handleWhatsApp(e, m)}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg>
-                    </Button>
+                    {m.status === "pendente" ? (
+                      <Button
+                        className="flex-1 h-10 gap-2 font-bold bg-yellow-500 hover:bg-yellow-600 text-white border-none shadow-sm shadow-yellow-500/20"
+                        onClick={(e) => { e.stopPropagation(); setSelectedMatricula(m); }}
+                      >
+                        <Check className="h-4 w-4" />
+                        Aprovar Matrícula
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="secondary"
+                          className="flex-1 h-10 gap-2 font-bold bg-primary/10 hover:bg-primary/20 text-primary border-none"
+                        >
+                          <Eye className="h-4 w-4" />
+                          Visualizar
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-10 w-10 border border-[#25D366]/20 text-[#25D366] hover:bg-[#25D366]/10"
+                          onClick={(e) => handleWhatsApp(e, m)}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg>
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))
