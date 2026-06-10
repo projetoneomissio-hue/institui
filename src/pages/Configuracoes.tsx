@@ -129,6 +129,9 @@ const Configuracoes = () => {
   const [activeTab, setActiveTab] = useState("profile");
   const [localFlags, setLocalFlags] = useState<Record<FeatureKey, boolean>>(allFeatures);
   const [flagsSaved, setFlagsSaved] = useState(false);
+  const [emailFromName, setEmailFromName] = useState("");
+  const [emailReplyTo, setEmailReplyTo] = useState("");
+  const [emailSaved, setEmailSaved] = useState(false);
 
   // Sincroniza localFlags quando unidade muda
   useEffect(() => {
@@ -145,6 +148,7 @@ const Configuracoes = () => {
     ...(user?.activeRole === "direcao" ? [
       { id: "organization", label: "Organização", description: "Identidade visual e dados da unidade",  icon: Building2 },
       { id: "modules",      label: "Módulos",     description: "Ative ou desative funcionalidades",     icon: Sliders   },
+      { id: "email",        label: "Email",        description: "Nome do remetente e reply-to",          icon: Mail      },
     ] : []),
   ];
 
@@ -187,6 +191,45 @@ const Configuracoes = () => {
     },
     onError: (err: any) => {
       toast({ title: "Erro ao salvar módulos", description: err.message, variant: "destructive" });
+    },
+  });
+
+  // ---------------------------------------------------------------------------
+  // Email config — carrega ao entrar na aba
+  // ---------------------------------------------------------------------------
+  useQuery({
+    queryKey: ["email-config", currentUnidade?.id],
+    enabled: !!currentUnidade?.id && user?.activeRole === "direcao",
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("unidades")
+        .select("email_config")
+        .eq("id", currentUnidade!.id)
+        .single();
+      if (error) throw error;
+      const cfg = (data as any)?.email_config;
+      setEmailFromName(cfg?.from_name ?? "");
+      setEmailReplyTo(cfg?.reply_to ?? "");
+      return cfg;
+    },
+  });
+
+  const saveEmailConfigMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentUnidade?.id) throw new Error("Nenhuma unidade selecionada");
+      const { error } = await supabase
+        .from("unidades")
+        .update({ email_config: { from_name: emailFromName.trim(), reply_to: emailReplyTo.trim() || null } })
+        .eq("id", currentUnidade.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setEmailSaved(true);
+      setTimeout(() => setEmailSaved(false), 3000);
+      toast({ title: "Configurações de email salvas" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
     },
   });
 
@@ -679,6 +722,75 @@ const Configuracoes = () => {
                       )}
                     </Button>
                   </div>
+                </div>
+              )}
+
+              {/* ── EMAIL ─────────────────────────────────────────────── */}
+              {activeTab === "email" && user?.activeRole === "direcao" && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <Card className="border-border/50 shadow-xl shadow-black/5">
+                    <CardHeader className="border-b border-border/30 pb-8">
+                      <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                          <Mail className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-2xl">Configurações de Email</CardTitle>
+                          <CardDescription>
+                            Os emails do sistema são enviados pela plataforma, mas com o nome da sua organização.
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-8 space-y-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="from-name">Nome do Remetente</Label>
+                        <Input
+                          id="from-name"
+                          placeholder="Ex: Academia FitLife"
+                          value={emailFromName}
+                          onChange={(e) => setEmailFromName(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Aparece como: <code className="bg-muted px-1 rounded">{emailFromName || "Zafen"} &lt;noreply@zafen.com.br&gt;</code>
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="reply-to">Reply-to (opcional)</Label>
+                        <Input
+                          id="reply-to"
+                          type="email"
+                          placeholder="Ex: contato@suaorg.com.br"
+                          value={emailReplyTo}
+                          onChange={(e) => setEmailReplyTo(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Quando o destinatário responder ao email, a resposta vai para este endereço.
+                        </p>
+                      </div>
+
+                      <div className="flex justify-end pt-2">
+                        <Button
+                          size="lg"
+                          onClick={() => saveEmailConfigMutation.mutate()}
+                          disabled={saveEmailConfigMutation.isPending || !emailFromName.trim()}
+                          className={cn(
+                            "h-12 px-10 font-bold shadow-lg shadow-primary/20 gap-2",
+                            emailSaved && "bg-emerald-600 hover:bg-emerald-700"
+                          )}
+                        >
+                          {saveEmailConfigMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : emailSaved ? (
+                            <><CheckCircle2 className="h-4 w-4" /> Salvo!</>
+                          ) : (
+                            "Salvar"
+                          )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               )}
 

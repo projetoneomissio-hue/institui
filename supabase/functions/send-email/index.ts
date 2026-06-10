@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import {
     WELCOME_EMAIL_TEMPLATE,
     MATRICULA_SOLICITADA_TEMPLATE,
@@ -18,6 +19,7 @@ interface EmailRequest {
     type: "welcome" | "custom" | "matricula_solicitada" | "matricula_aprovada" | "nova_matricula_admin";
     subject?: string;
     html?: string;
+    unidade_id?: string;
     data?: {
         nomeResponsavel?: string;
         nomeAluno?: string;
@@ -32,7 +34,26 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     try {
-        const { to, type, subject: reqSubject, html: reqHtml, data }: EmailRequest = await req.json();
+        const { to, type, subject: reqSubject, html: reqHtml, data, unidade_id }: EmailRequest = await req.json();
+
+        // Carrega config de email do tenant (from_name + reply_to)
+        let fromName = "Zafen";
+        let replyTo: string | undefined;
+        if (unidade_id) {
+            const admin = createClient(
+                Deno.env.get("SUPABASE_URL") ?? "",
+                Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+            );
+            const { data: unidade } = await admin
+                .from("unidades")
+                .select("email_config")
+                .eq("id", unidade_id)
+                .single();
+            if (unidade?.email_config) {
+                fromName = unidade.email_config.from_name || fromName;
+                replyTo = unidade.email_config.reply_to || undefined;
+            }
+        }
 
         let subject = reqSubject;
         let html = reqHtml;
@@ -69,18 +90,22 @@ const handler = async (req: Request): Promise<Response> => {
             });
         }
 
+        const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") ?? "sistema@neomissio.com.br";
+        const resendPayload: Record<string, unknown> = {
+            from: `${fromName} <${fromEmail}>`,
+            to: [to],
+            subject: subject,
+            html: html,
+        };
+        if (replyTo) resendPayload.reply_to = replyTo;
+
         const res = await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${RESEND_API_KEY}`,
             },
-            body: JSON.stringify({
-                from: "Neo Missio <sistema@neomissio.com.br>", // Updated to official domain
-                to: [to],
-                subject: subject,
-                html: html,
-            }),
+            body: JSON.stringify(resendPayload),
         });
 
         const resData = await res.json();

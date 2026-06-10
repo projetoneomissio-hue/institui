@@ -13,6 +13,7 @@ interface EmailRequest {
   inviteToken: string;
   role: string;
   origin?: string;
+  unidade_id?: string;
 }
 
 serve(async (req) => {
@@ -83,7 +84,22 @@ serve(async (req) => {
     }
 
     // 2. Parse Body
-    const { to, inviteToken, role, origin, nomeResponsavel } = await req.json() as EmailRequest & { nomeResponsavel?: string };
+    const { to, inviteToken, role, origin, nomeResponsavel, unidade_id } = await req.json() as EmailRequest & { nomeResponsavel?: string };
+
+    // Carrega config de email do tenant
+    let fromName = "Zafen";
+    let replyTo: string | undefined;
+    if (unidade_id) {
+      const { data: unidade } = await supabaseAdmin
+        .from("unidades")
+        .select("email_config")
+        .eq("id", unidade_id)
+        .single();
+      if (unidade?.email_config) {
+        fromName = unidade.email_config.from_name || fromName;
+        replyTo = unidade.email_config.reply_to || undefined;
+      }
+    }
 
     if (!to || !inviteToken || !role) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -181,10 +197,11 @@ serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: `Neo Missio <${Deno.env.get("RESEND_FROM_EMAIL") ?? "sistema@neomissio.com.br"}>`,
+        from: `${fromName} <${Deno.env.get("RESEND_FROM_EMAIL") ?? "sistema@neomissio.com.br"}>`,
         to: [to],
-        subject: subject,
-        html: html,
+        subject,
+        html,
+        ...(replyTo ? { reply_to: replyTo } : {}),
       }),
     });
 
