@@ -198,13 +198,13 @@ const App = () => (
                 <Toaster />
                 <Sonner />
                 <RealtimeNotifications />
+                <ReloadPrompt />
                 <BrowserRouter>
                   <AppRoutes />
                 </BrowserRouter>
               </PostHogProvider>
             </TooltipProvider>
           </UnidadeProvider>
-          <ReloadPrompt /> {/* Added ReloadPrompt here */}
         </AuthProvider>
       </ThemeProvider>
     </HelmetProvider>

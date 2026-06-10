@@ -103,7 +103,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return null;
       }
     },
-    staleTime: Infinity,
+    staleTime: 1000 * 60 * 5, // 5 minutos — permite refletir mudança de role sem logout
   });
 
   // Compute the final user object with activeRole

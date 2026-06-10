@@ -4,8 +4,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 const INFINITEPAY_HANDLE = Deno.env.get("INFINITEPAY_HANDLE");
 const INFINITEPAY_API_URL = "https://api.infinitepay.io/invoices/public/checkout/links";
 
+const ALLOWED_ORIGIN = Deno.env.get("APP_ORIGIN") ?? "https://sistema.neomissio.com.br";
+
 const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
@@ -155,23 +157,9 @@ serve(async (req) => {
 
         console.log("[INFINITEPAY] Checkout link created:", checkoutUrl);
 
-        // 10. Shorten URL via is.gd (free, no auth, direct redirect)
-        let finalUrl = checkoutUrl;
-        try {
-            const shortRes = await fetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(checkoutUrl)}`);
-            if (shortRes.ok) {
-                const shortUrl = (await shortRes.text()).trim();
-                if (shortUrl && shortUrl.startsWith("https://")) {
-                    finalUrl = shortUrl;
-                    console.log("[INFINITEPAY] Shortened URL:", finalUrl);
-                }
-            }
-        } catch (shortenError) {
-            console.warn("[INFINITEPAY] URL shortening failed, using original:", shortenError);
-            // Non-critical: just use the original long URL
-        }
+        const finalUrl = checkoutUrl;
 
-        // 11. Save gateway info to pagamentos table
+        // 10. Save gateway info to pagamentos table
         const { error: updateError } = await supabaseService
             .from("pagamentos")
             .update({
@@ -200,9 +188,10 @@ serve(async (req) => {
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error("[INFINITEPAY] Error:", errorMessage);
+        const status = errorMessage.includes("not authenticated") || errorMessage.includes("Permission denied") ? 401 : 400;
         return new Response(JSON.stringify({ error: errorMessage, success: false }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200,
+            status,
         });
     }
 });

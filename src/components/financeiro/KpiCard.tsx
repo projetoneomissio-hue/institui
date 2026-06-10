@@ -4,6 +4,7 @@ import { LucideIcon } from "lucide-react";
 
 interface KpiCardProps {
     title: string;
+    subtitle?: string;
     value: number;
     variation: number;
     icon: LucideIcon;
@@ -12,7 +13,7 @@ interface KpiCardProps {
     inverse?: boolean;
 }
 
-export const KpiCard = ({ title, value, variation, icon: Icon, color, borderColor, inverse = false }: KpiCardProps) => {
+export const KpiCard = ({ title, subtitle, value, variation, icon: Icon, color, borderColor, inverse = false }: KpiCardProps) => {
     const isPositive = variation >= 0;
     const trendColor = inverse
         ? (isPositive ? "text-red-500" : "text-emerald-500")
@@ -35,6 +36,9 @@ export const KpiCard = ({ title, value, variation, icon: Icon, color, borderColo
                     {Math.abs(variation).toFixed(1)}%
                     <span className="text-muted-foreground ml-1 text-[10px] font-normal">vs mês anterior</span>
                 </div>
+                {subtitle && (
+                    <p className="text-[10px] text-muted-foreground mt-1 truncate" title={subtitle}>{subtitle}</p>
+                )}
             </CardContent>
         </Card>
     );

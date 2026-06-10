@@ -44,18 +44,20 @@ const GestaoCobrancas = () => {
     const [selectedPagamento, setSelectedPagamento] = useState<any>(null);
     const [formaPagamentoBaixa, setFormaPagamentoBaixa] = useState("");
     const [sendingEmail, setSendingEmail] = useState<string | null>(null);
+    const [page, setPage] = useState(0);
+    const PAGE_SIZE = 100;
 
     // Estado do modal de edição de alunos
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [alunoToEdit, setAlunoToEdit] = useState<any>(null);
 
-    // Buscar pagamentos com dados completos
-    const { data: pagamentos, isLoading } = useQuery({
-        queryKey: ["gestao-cobrancas", currentUnidade?.id],
+    // Buscar pagamentos com dados completos (paginado)
+    const { data: pagamentosResult, isLoading } = useQuery({
+        queryKey: ["gestao-cobrancas", currentUnidade?.id, page],
         queryFn: async () => {
-            if (!currentUnidade?.id) return [];
+            if (!currentUnidade?.id) return { data: [], count: 0 };
 
-            const { data, error } = await supabase
+            const { data, error, count } = await supabase
                 .from("pagamentos")
                 .select(`
                     *,
@@ -71,17 +73,21 @@ const GestaoCobrancas = () => {
                             atividade:atividades(id, nome)
                         )
                     )
-                `)
+                `, { count: "exact" })
                 .eq("unidade_id", currentUnidade.id)
-                .order("status", { ascending: true }) // pendente antes de pago
+                .order("status", { ascending: true })
                 .order("data_vencimento", { ascending: true })
-                .limit(500);
+                .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
             if (error) throw error;
-            return data || [];
+            return { data: data || [], count: count ?? 0 };
         },
         enabled: !!currentUnidade?.id
     });
+
+    const pagamentos = pagamentosResult?.data ?? [];
+    const totalCount = pagamentosResult?.count ?? 0;
+    const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
     // Gerar Link InfinitePay
     const gerarLinkMutation = useMutation({
@@ -265,6 +271,7 @@ const GestaoCobrancas = () => {
         setStatusFilter("todos");
         setAtividadeFilter("todas");
         setTurmaFilter("todas");
+        setPage(0);
     };
 
     const hasActiveFilters = searchTerm || statusFilter !== "todos" || atividadeFilter !== "todas" || turmaFilter !== "todas";
@@ -706,13 +713,41 @@ const GestaoCobrancas = () => {
                     </div>
                     {/* Rodapé da tabela */}
                     {filteredPagamentos.length > 0 && (
-                        <div className="border-t px-4 py-3 bg-muted/30 text-sm text-muted-foreground flex justify-between items-center">
-                            <span>Mostrando <strong className="text-foreground">{filteredPagamentos.length}</strong> fatura(s)</span>
+                        <div className="border-t px-4 py-3 bg-muted/30 text-sm text-muted-foreground flex flex-col sm:flex-row justify-between items-center gap-2">
                             <span>
-                                Total exibido: <strong className="text-foreground">
-                                    {filteredPagamentos.reduce((s, p) => s + Number(p.valor), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                </strong>
+                                Mostrando <strong className="text-foreground">{filteredPagamentos.length}</strong> de{" "}
+                                <strong className="text-foreground">{totalCount}</strong> fatura(s)
                             </span>
+                            <div className="flex items-center gap-2">
+                                <span>
+                                    Total exibido: <strong className="text-foreground">
+                                        {filteredPagamentos.reduce((s, p) => s + Number(p.valor), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    </strong>
+                                </span>
+                                {totalPages > 1 && (
+                                    <div className="flex items-center gap-1 ml-4">
+                                        <Button
+                                            variant="outline" size="sm"
+                                            disabled={page === 0}
+                                            onClick={() => setPage(p => p - 1)}
+                                            className="h-7 px-2 text-xs"
+                                        >
+                                            ← Anterior
+                                        </Button>
+                                        <span className="text-xs px-2">
+                                            Pág. {page + 1} / {totalPages}
+                                        </span>
+                                        <Button
+                                            variant="outline" size="sm"
+                                            disabled={page >= totalPages - 1}
+                                            onClick={() => setPage(p => p + 1)}
+                                            className="h-7 px-2 text-xs"
+                                        >
+                                            Próxima →
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>

@@ -196,11 +196,19 @@ export const financeiroService = {
     /** Dados para exportação PDF/CSV */
     async fetchDadosPDF(unidadeId?: string) {
         const hoje = new Date();
-        const startOfMonth = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString();
+        // Usa campos de competência/negócio (consistente com os KPIs do dashboard)
+        const startOfMonth = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split("T")[0];
+        const endOfMonth = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split("T")[0];
 
-        let pagQuery = supabase.from("pagamentos").select("*").gte("created_at", startOfMonth);
-        let cusQuery = supabase.from("custos_predio").select("*").gte("created_at", startOfMonth);
-        let locQuery = supabase.from("locacoes").select("*").gte("created_at", startOfMonth);
+        let pagQuery = supabase.from("pagamentos").select("*")
+            .gte("data_pagamento", startOfMonth)
+            .lte("data_pagamento", endOfMonth);
+        let cusQuery = supabase.from("custos_predio").select("*")
+            .gte("data_competencia", startOfMonth)
+            .lte("data_competencia", endOfMonth);
+        let locQuery = supabase.from("locacoes").select("*")
+            .gte("data", startOfMonth)
+            .lte("data", endOfMonth);
 
         if (unidadeId) {
             pagQuery = pagQuery.eq("unidade_id", unidadeId);

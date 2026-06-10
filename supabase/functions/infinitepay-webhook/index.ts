@@ -2,9 +2,40 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Origin": "https://api.infinitepay.io",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-infinitepay-signature",
 };
+
+const WEBHOOK_SECRET = Deno.env.get("INFINITEPAY_WEBHOOK_SECRET") ?? "";
+
+/**
+ * Valida a assinatura HMAC-SHA256 enviada pela InfinitePay no header
+ * x-infinitepay-signature. Previne que payloads forjados marquem
+ * pagamentos como pagos sem que o evento tenha vindo da InfinitePay.
+ */
+async function validateSignature(rawBody: string, signatureHeader: string | null): Promise<boolean> {
+    if (!WEBHOOK_SECRET) {
+        console.warn("[INFINITEPAY-WEBHOOK] INFINITEPAY_WEBHOOK_SECRET não configurado — validação de assinatura ignorada");
+        return true;
+    }
+    if (!signatureHeader) {
+        console.error("[INFINITEPAY-WEBHOOK] Header x-infinitepay-signature ausente");
+        return false;
+    }
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+        "raw",
+        encoder.encode(WEBHOOK_SECRET),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"]
+    );
+    const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(rawBody));
+    const expectedHex = Array.from(new Uint8Array(signature))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+    return signatureHeader === expectedHex;
+}
 
 /**
  * InfinitePay Webhook Handler
@@ -24,6 +55,9 @@ const corsHeaders = {
  *   receipt_url: string,
  *   items: [...]
  * }
+ *
+ * Security: validates x-infinitepay-signature HMAC-SHA256 header.
+ * Configure INFINITEPAY_WEBHOOK_SECRET in Supabase Secrets.
  */
 
 serve(async (req) => {
@@ -37,7 +71,20 @@ serve(async (req) => {
     );
 
     try {
-        const body = await req.json();
+        // Lê o body como texto para validar a assinatura ANTES de parsear JSON
+        const rawBody = await req.text();
+        const signatureHeader = req.headers.get("x-infinitepay-signature");
+
+        const isValid = await validateSignature(rawBody, signatureHeader);
+        if (!isValid) {
+            console.error("[INFINITEPAY-WEBHOOK] Assinatura inválida — payload rejeitado");
+            return new Response(JSON.stringify({ success: false, message: "Invalid signature" }), {
+                status: 401,
+                headers: { "Content-Type": "application/json" },
+            });
+        }
+
+        const body = JSON.parse(rawBody);
         console.log("[INFINITEPAY-WEBHOOK] Received:", JSON.stringify(body));
 
         const {

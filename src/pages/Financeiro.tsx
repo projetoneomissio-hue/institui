@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,16 +40,16 @@ const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
 
 const Financeiro = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const reportRef = useRef<HTMLDivElement>(null);
   const { currentUnidade } = useUnidade();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-  // Responsive state
-  useState(() => {
+  useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  });
+  }, []);
 
   // Novos Hooks Otimizados
   const { data: kpis, isLoading: loadingKPIs } = useFinanceiroKPIs();
@@ -189,8 +189,9 @@ const Financeiro = () => {
               {/* KPIs Cards */}
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                 <KpiCard
-                  title="Receita Mensal"
-                  value={kpis?.receita.total || 0}
+                  title="Receita Líquida"
+                  subtitle={kpis?.receita.repasse_professores > 0 ? `Repasse professores: R$ ${Number(kpis?.receita.repasse_professores || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : undefined}
+                  value={kpis?.receita.liquida ?? kpis?.receita.total ?? 0}
                   variation={kpis?.receita.variacao || 0}
                   icon={DollarSign}
                   color="text-emerald-500"
