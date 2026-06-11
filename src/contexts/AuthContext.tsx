@@ -6,6 +6,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export type UserRole = "direcao" | "coordenacao" | "professor" | "responsavel" | "secretaria";
 
+export const SUPER_ADMIN_EMAIL = "breno.albuquerque@gmail.com";
+
 const ACTIVE_ROLE_KEY = "neo-missio-active-role";
 
 interface User {
@@ -21,6 +23,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   session: Session | null;
+  isSuperAdmin: boolean;
   login: (email: string, password: string) => Promise<{ error: Error | null }>;
   signup: (email: string, password: string, name: string, role: UserRole, inviteToken?: string, referralCode?: string) => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
@@ -186,6 +189,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         user: user || null,
         session,
+        isSuperAdmin: user?.email === SUPER_ADMIN_EMAIL,
         login,
         signup,
         logout,

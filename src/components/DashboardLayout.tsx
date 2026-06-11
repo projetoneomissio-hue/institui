@@ -39,6 +39,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUnidade } from "@/contexts/UnidadeContext";
+import { Layers } from "lucide-react";
 import { useAllFeatures, type FeatureKey } from "@/contexts/FeatureContext";
 import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -297,7 +298,7 @@ const getBottomNavItems = (role: string) => {
 
 const Sidebar = ({ isCollapsed, toggleCollapsed }: { isCollapsed: boolean; toggleCollapsed: () => void }) => {
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, isSuperAdmin } = useAuth();
   const { currentUnidade } = useUnidade();
   const navigate = useNavigate();
   const features = useAllFeatures();
@@ -386,6 +387,53 @@ const Sidebar = ({ isCollapsed, toggleCollapsed }: { isCollapsed: boolean; toggl
         `}</style>
           <TooltipProvider delayDuration={0}>
             <ul role="list" className="flex flex-1 flex-col gap-y-6">
+              {isSuperAdmin && (
+                <li>
+                  {!isCollapsed && (
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wide mb-3 px-2 text-primary/70">
+                      ⚡ Plataforma Institui
+                    </h3>
+                  )}
+                  <ul className="space-y-1">
+                    {[
+                      { name: "Organizações", href: "/admin/organizacoes", icon: Layers },
+                    ].map((item) => {
+                      const isActive = location.pathname === item.href;
+                      const Icon = item.icon;
+                      return (
+                        <li key={item.name}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Link
+                                to={item.href}
+                                className={cn(
+                                  "group relative flex gap-x-3 rounded-xl p-2.5 transition-all duration-300",
+                                  isActive
+                                    ? "bg-primary/10 text-primary"
+                                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                                )}
+                              >
+                                <Icon className={cn("shrink-0", isCollapsed ? "h-5 w-5" : "h-4 w-4")} />
+                                {!isCollapsed && (
+                                  <span className="text-xs font-semibold uppercase tracking-wide truncate">
+                                    {item.name}
+                                  </span>
+                                )}
+                              </Link>
+                            </TooltipTrigger>
+                            {isCollapsed && (
+                              <TooltipContent side="right" className="font-semibold text-[10px] uppercase tracking-wide bg-primary text-white border-none">
+                                {item.name}
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              )}
+
               {navigation.map((group) => (
                 <li key={group.group}>
                   {!isCollapsed && (

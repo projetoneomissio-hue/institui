@@ -179,8 +179,8 @@ export const AppRoutes = () => {
       <Route path="/secretaria/alunos" element={<ProtectedRoute allowedRoles={["secretaria"]}><Alunos /></ProtectedRoute>} />
       <Route path="/secretaria/pre-cadastro" element={<ProtectedRoute allowedRoles={["secretaria", "direcao"]}><PreCadastro /></ProtectedRoute>} />
 
-      {/* Super-admin — somente direção da Matriz */}
-      <Route path="/admin/organizacoes" element={<ProtectedRoute allowedRoles={["direcao"]}><Organizacoes /></ProtectedRoute>} />
+      {/* Super-admin — somente dono da plataforma (breno.albuquerque@gmail.com) */}
+      <Route path="/admin/organizacoes" element={<ProtectedRoute superAdminOnly><Organizacoes /></ProtectedRoute>} />
 
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="/ajuda" element={<ProtectedRoute><Ajuda /></ProtectedRoute>} />

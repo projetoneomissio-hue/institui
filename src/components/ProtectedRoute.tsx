@@ -51,10 +51,11 @@ interface ProtectedRouteProps {
   children: ReactNode;
   allowedRoles?: UserRole[];
   allowedFeature?: FeatureKey;
+  superAdminOnly?: boolean;
 }
 
-export const ProtectedRoute = ({ children, allowedRoles, allowedFeature }: ProtectedRouteProps) => {
-  const { isAuthenticated, user, loading } = useAuth();
+export const ProtectedRoute = ({ children, allowedRoles, allowedFeature, superAdminOnly }: ProtectedRouteProps) => {
+  const { isAuthenticated, user, loading, isSuperAdmin } = useAuth();
   const features = useAllFeatures();
 
   // Aguarda session + perfil carregarem antes de decidir qualquer redirect
@@ -75,6 +76,11 @@ export const ProtectedRoute = ({ children, allowedRoles, allowedFeature }: Prote
   // NOTE: This is UX only. Real security is in RLS policies.
   // Check ALL assigned roles (not just activeRole) so multi-role users can access all their routes
   if (allowedRoles && user && !user.roles.some(r => allowedRoles.includes(r))) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Rotas exclusivas do super-admin (dono da plataforma Institui)
+  if (superAdminOnly && !isSuperAdmin) {
     return <Navigate to="/" replace />;
   }
 
