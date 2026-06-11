@@ -54,8 +54,7 @@ export default function Organizacoes() {
       const { data, error } = await supabase
         .from("unidades")
         .select("*")
-        .neq("id", MATRIZ_ID)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return data;
     },
