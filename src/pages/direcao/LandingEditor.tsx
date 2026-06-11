@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,10 +22,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Plus, Pencil, Trash2, ExternalLink, Image as ImageIcon, Loader2,
-  GripVertical, Eye, EyeOff, ChevronUp, ChevronDown,
+  Eye, EyeOff, ChevronUp, ChevronDown, Layout, List,
 } from "lucide-react";
 import { activities as staticActivities, ICON_OPTIONS, GRADIENT_OPTIONS, getIconByName } from "@/data/landing-data";
 import { compressImage } from "@/utils/compressImage";
+
+// ── Atividades ────────────────────────────────────────────────────────────────
 
 interface LandingAtividade {
   id: string;
@@ -64,19 +67,63 @@ const emptyForm = (): Omit<LandingAtividade, "id" | "unidade_id"> => ({
   ativo: true,
 });
 
+// ── Landing Config ────────────────────────────────────────────────────────────
+
+interface LandingConfig {
+  hero: {
+    headline: string;
+    subtitulo: string;
+    badge_texto: string;
+    cta_texto: string;
+    bg_image_url: string;
+  };
+  sobre: {
+    titulo: string;
+    texto: string;
+    imagem_url: string;
+  };
+  depoimentos: Array<{ nome: string; texto: string; foto_url: string }>;
+  galeria: string[];
+  secoes_ativas: {
+    sobre: boolean;
+    depoimentos: boolean;
+    galeria: boolean;
+  };
+}
+
+const defaultLandingConfig: LandingConfig = {
+  hero: { headline: "", subtitulo: "", badge_texto: "", cta_texto: "", bg_image_url: "" },
+  sobre: { titulo: "", texto: "", imagem_url: "" },
+  depoimentos: [],
+  galeria: [],
+  secoes_ativas: { sobre: false, depoimentos: false, galeria: false },
+};
+
+// ── Componente ─────────────────────────────────────────────────────────────────
+
 const LandingEditor = () => {
   const { user } = useAuth();
   const { currentUnidade } = useUnidade();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const heroBgRef = useRef<HTMLInputElement>(null);
+  const sobreImgRef = useRef<HTMLInputElement>(null);
+  const galeriaRef = useRef<HTMLInputElement>(null);
 
+  // Atividades state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [uploading, setUploading] = useState(false);
   const [tableError, setTableError] = useState(false);
+
+  // Aparência state
+  const [landingConfig, setLandingConfig] = useState<LandingConfig>(defaultLandingConfig);
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
+
+  // ── Atividades queries ────────────────────────────────────────────────────
 
   const { data: dbAtividades, isLoading } = useQuery({
     queryKey: ["landing-atividades-admin", currentUnidade?.id],
@@ -86,7 +133,6 @@ const LandingEditor = () => {
         .select("*")
         .order("ordem", { ascending: true });
       if (error) {
-        // PGRST106 = relation not found in PostgREST schema cache (table doesn't exist yet)
         const isTableMissing = error.code === "42P01" || error.code === "PGRST106"
           || error.message?.toLowerCase().includes("not find the table")
           || error.message?.toLowerCase().includes("does not exist");
@@ -97,6 +143,37 @@ const LandingEditor = () => {
       return (data as LandingAtividade[]) || [];
     },
   });
+
+  // ── Aparência query ───────────────────────────────────────────────────────
+
+  const { data: savedConfig } = useQuery({
+    queryKey: ["unidade-landing-config", currentUnidade?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("unidades" as any)
+        .select("landing_config")
+        .eq("id", currentUnidade!.id)
+        .maybeSingle();
+      return (data as any)?.landing_config as LandingConfig | null;
+    },
+    enabled: !!currentUnidade?.id,
+  });
+
+  useEffect(() => {
+    if (savedConfig) {
+      setLandingConfig({
+        ...defaultLandingConfig,
+        ...savedConfig,
+        hero: { ...defaultLandingConfig.hero, ...(savedConfig.hero || {}) },
+        sobre: { ...defaultLandingConfig.sobre, ...(savedConfig.sobre || {}) },
+        secoes_ativas: { ...defaultLandingConfig.secoes_ativas, ...(savedConfig.secoes_ativas || {}) },
+        depoimentos: savedConfig.depoimentos || [],
+        galeria: savedConfig.galeria || [],
+      });
+    }
+  }, [savedConfig]);
+
+  // ── Atividades mutations ──────────────────────────────────────────────────
 
   const saveMutation = useMutation({
     mutationFn: async (data: Omit<LandingAtividade, "id" | "unidade_id"> & { id?: string }) => {
@@ -173,7 +250,26 @@ const LandingEditor = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["landing-atividades-admin"] }),
   });
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ── Aparência mutation ────────────────────────────────────────────────────
+
+  const saveLandingConfigMutation = useMutation({
+    mutationFn: async (config: LandingConfig) => {
+      const { error } = await supabase
+        .from("unidades" as any)
+        .update({ landing_config: config })
+        .eq("id", currentUnidade!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["unidade-landing-config"] });
+      toast({ title: "Aparência salva!", description: "As alterações já estão visíveis na sua landing page." });
+    },
+    onError: (e: any) => toast({ title: "Erro ao salvar aparência", description: e.message, variant: "destructive" }),
+  });
+
+  // ── Upload helpers ────────────────────────────────────────────────────────
+
+  const uploadActivityImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
@@ -193,6 +289,30 @@ const LandingEditor = () => {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
+
+  const uploadAparenciaImage = async (
+    file: File,
+    fieldPath: string,
+    onSuccess: (url: string) => void
+  ) => {
+    setUploadingField(fieldPath);
+    try {
+      const compressed = await compressImage(file);
+      const ext = file.name.split(".").pop();
+      const path = `landing-config/${fieldPath.replace(/\./g, "-")}-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("student-photos").upload(path, compressed, { upsert: true });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from("student-photos").getPublicUrl(path);
+      onSuccess(data.publicUrl);
+      toast({ title: "Imagem enviada!" });
+    } catch (err: any) {
+      toast({ title: "Erro no upload", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingField(null);
+    }
+  };
+
+  // ── Activity helpers ──────────────────────────────────────────────────────
 
   const openNew = () => {
     setEditingId(null);
@@ -224,10 +344,6 @@ const LandingEditor = () => {
     reorderMutation.mutate({ id, ordem: newOrdem });
   };
 
-  // Atividades salvas no banco
-  const dbList: Array<LandingAtividade & { isStatic?: boolean }> = dbAtividades || [];
-
-  // Templates estáticos que ainda não foram adicionados ao banco
   const staticTemplates = staticActivities.map((a, i) => ({
     id: a.id, titulo: a.title, descricao: a.description, preco: a.price,
     preco_nota: a.priceNote || null, frequencia: a.frequency, horario: a.schedule,
@@ -248,171 +364,513 @@ const LandingEditor = () => {
     setDialogOpen(true);
   };
 
+  // ── Depoimentos helpers ───────────────────────────────────────────────────
+
+  const addDepoimento = () => {
+    setLandingConfig(c => ({
+      ...c,
+      depoimentos: [...c.depoimentos, { nome: "", texto: "", foto_url: "" }],
+    }));
+  };
+
+  const updateDepoimento = (i: number, field: string, value: string) => {
+    setLandingConfig(c => {
+      const updated = [...c.depoimentos];
+      updated[i] = { ...updated[i], [field]: value };
+      return { ...c, depoimentos: updated };
+    });
+  };
+
+  const removeDepoimento = (i: number) => {
+    setLandingConfig(c => ({ ...c, depoimentos: c.depoimentos.filter((_, idx) => idx !== i) }));
+  };
+
+  const removeGaleriaImage = (i: number) => {
+    setLandingConfig(c => ({ ...c, galeria: c.galeria.filter((_, idx) => idx !== i) }));
+  };
+
+  const dbList: LandingAtividade[] = dbAtividades || [];
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
     <DashboardLayout>
       <div className="p-4 lg:p-8 space-y-6 max-w-6xl mx-auto">
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold">Editor da Landing Page</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Gerencie as atividades exibidas no site público</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Personalize o site público da sua organização</p>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" size="sm" asChild>
-              <a href="/" target="_blank" rel="noopener noreferrer" className="gap-1.5">
-                <ExternalLink className="h-4 w-4" /> Ver Site
-              </a>
-            </Button>
-            <Button onClick={openNew} className="gap-1.5" size="sm" disabled={tableError}>
-              <Plus className="h-4 w-4" /> Nova Atividade
-            </Button>
-          </div>
+          <Button variant="outline" size="sm" asChild>
+            <a href="/" target="_blank" rel="noopener noreferrer" className="gap-1.5">
+              <ExternalLink className="h-4 w-4" /> Ver Site
+            </a>
+          </Button>
         </div>
 
-        {/* SQL notice */}
-        {tableError && (
-          <Card className="border-amber-500/30 bg-amber-50 dark:bg-amber-900/10">
-            <CardContent className="p-4 space-y-3">
-              <p className="font-bold text-amber-700 dark:text-amber-400">⚠ Tabela não encontrada no Supabase</p>
-              <p className="text-sm text-amber-600 dark:text-amber-300">
-                Rode o SQL abaixo no painel do Supabase → SQL Editor para ativar o editor:
-              </p>
-              <pre className="text-xs bg-black/80 text-green-400 p-4 rounded-xl overflow-x-auto whitespace-pre-wrap">{SQL_MIGRATION}</pre>
-            </CardContent>
-          </Card>
-        )}
+        <Tabs defaultValue="atividades">
+          <TabsList className="w-full sm:w-auto">
+            <TabsTrigger value="atividades" className="gap-1.5">
+              <List className="h-4 w-4" /> Atividades
+            </TabsTrigger>
+            <TabsTrigger value="aparencia" className="gap-1.5">
+              <Layout className="h-4 w-4" /> Aparência
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Activities grid */}
-        {isLoading ? (
-          <div className="flex items-center justify-center h-48">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <div className="space-y-8">
+          {/* ── Tab: Atividades ───────────────────────────────────────────── */}
+          <TabsContent value="atividades" className="space-y-6 mt-6">
 
-            {/* Seção: Atividades no site */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                  No site agora {dbList.length > 0 && `(${dbList.length})`}
-                </h2>
-                {dbList.length === 0 && (
-                  <span className="text-xs text-muted-foreground italic">— adicione atividades abaixo ou crie uma nova</span>
-                )}
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">Gerencie as atividades exibidas no site público</p>
+              <Button onClick={openNew} className="gap-1.5" size="sm" disabled={tableError}>
+                <Plus className="h-4 w-4" /> Nova Atividade
+              </Button>
+            </div>
+
+            {tableError && (
+              <Card className="border-amber-500/30 bg-amber-50 dark:bg-amber-900/10">
+                <CardContent className="p-4 space-y-3">
+                  <p className="font-bold text-amber-700 dark:text-amber-400">⚠ Tabela não encontrada no Supabase</p>
+                  <p className="text-sm text-amber-600 dark:text-amber-300">
+                    Rode o SQL abaixo no painel do Supabase → SQL Editor para ativar o editor:
+                  </p>
+                  <pre className="text-xs bg-black/80 text-green-400 p-4 rounded-xl overflow-x-auto whitespace-pre-wrap">{SQL_MIGRATION}</pre>
+                </CardContent>
+              </Card>
+            )}
+
+            {isLoading ? (
+              <div className="flex items-center justify-center h-48">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
-              {dbList.length === 0 ? (
-                <Card className="border-dashed border-2 border-muted-foreground/20">
-                  <CardContent className="p-8 text-center text-muted-foreground">
-                    <Plus className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Nenhuma atividade personalizada ainda.</p>
-                    <p className="text-xs mt-1">Use os templates abaixo como ponto de partida.</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid gap-3">
-                  {dbList.map((a, idx) => {
-                    const IconComp = getIconByName(a.icone);
-                    return (
-                      <Card key={a.id} className={`border ${!a.ativo ? "opacity-50" : ""}`}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-4">
-                            <div className={`relative h-16 w-28 rounded-xl bg-gradient-to-br ${a.gradiente} flex items-center justify-center shrink-0 overflow-hidden`}>
-                              {a.imagem_url
-                                ? <img src={a.imagem_url} alt="" className="w-full h-full object-cover object-center" />
-                                : <IconComp className="h-7 w-7 text-white/70" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap mb-1">
-                                <span className="font-bold">{a.titulo}</span>
-                                {a.gratuito && <Badge className="bg-green-600 text-white text-[10px]">Gratuito</Badge>}
-                                {a.lista_espera && <Badge className="bg-amber-500 text-white text-[10px]">Lista de espera</Badge>}
-                                {!a.ativo && <Badge variant="secondary" className="text-[10px]">Oculto</Badge>}
+            ) : (
+              <div className="space-y-8">
+
+                {/* Atividades no site */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                      No site agora {dbList.length > 0 && `(${dbList.length})`}
+                    </h2>
+                    {dbList.length === 0 && (
+                      <span className="text-xs text-muted-foreground italic">— adicione atividades abaixo ou crie uma nova</span>
+                    )}
+                  </div>
+                  {dbList.length === 0 ? (
+                    <Card className="border-dashed border-2 border-muted-foreground/20">
+                      <CardContent className="p-8 text-center text-muted-foreground">
+                        <Plus className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                        <p className="text-sm">Nenhuma atividade personalizada ainda.</p>
+                        <p className="text-xs mt-1">Use os templates abaixo como ponto de partida.</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="grid gap-3">
+                      {dbList.map((a, idx) => {
+                        const IconComp = getIconByName(a.icone);
+                        return (
+                          <Card key={a.id} className={`border ${!a.ativo ? "opacity-50" : ""}`}>
+                            <CardContent className="p-4">
+                              <div className="flex items-start gap-4">
+                                <div className={`relative h-16 w-28 rounded-xl bg-gradient-to-br ${a.gradiente} flex items-center justify-center shrink-0 overflow-hidden`}>
+                                  {a.imagem_url
+                                    ? <img src={a.imagem_url} alt="" className="w-full h-full object-cover object-center" />
+                                    : <IconComp className="h-7 w-7 text-white/70" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                                    <span className="font-bold">{a.titulo}</span>
+                                    {a.gratuito && <Badge className="bg-green-600 text-white text-[10px]">Gratuito</Badge>}
+                                    {a.lista_espera && <Badge className="bg-amber-500 text-white text-[10px]">Lista de espera</Badge>}
+                                    {!a.ativo && <Badge variant="secondary" className="text-[10px]">Oculto</Badge>}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground line-clamp-1">{a.descricao}</p>
+                                  <div className="flex gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
+                                    <span><strong>Preço:</strong> {a.preco}</span>
+                                    <span><strong>Público:</strong> {a.publico_alvo}</span>
+                                    {a.imagem_url && <span className="text-green-600 font-medium">📷 Com foto</span>}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveOrder(a.id, a.ordem, "up")} disabled={idx === 0}>
+                                    <ChevronUp className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveOrder(a.id, a.ordem, "down")} disabled={idx === dbList.length - 1}>
+                                    <ChevronDown className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleAtivoMutation.mutate({ id: a.id, ativo: !a.ativo })}>
+                                    {a.ativo ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(a)}>
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteId(a.id)}>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
-                              <p className="text-sm text-muted-foreground line-clamp-1">{a.descricao}</p>
-                              <div className="flex gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
-                                <span><strong>Preço:</strong> {a.preco}</span>
-                                <span><strong>Público:</strong> {a.publico_alvo}</span>
-                                {a.imagem_url && <span className="text-green-600 font-medium">📷 Com foto</span>}
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Templates padrão */}
+                <div className="space-y-3">
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                    Templates padrão — clique para adicionar ao site
+                  </h2>
+                  <div className="grid gap-2">
+                    {staticTemplates.map((a) => {
+                      const IconComp = getIconByName(a.icone);
+                      return (
+                        <Card key={a.id} className="border-dashed border-muted-foreground/25 opacity-80 hover:opacity-100 transition-opacity">
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-3">
+                              <div className={`h-12 w-20 rounded-lg bg-gradient-to-br ${a.gradiente} flex items-center justify-center shrink-0 overflow-hidden`}>
+                                <IconComp className="h-6 w-6 text-white/70" />
                               </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-semibold text-sm">{a.titulo}</span>
+                                  {a.gratuito && <Badge className="bg-green-600 text-white text-[10px]">Gratuito</Badge>}
+                                  {a.lista_espera && <Badge className="bg-amber-500 text-white text-[10px]">Lista de espera</Badge>}
+                                </div>
+                                <p className="text-xs text-muted-foreground truncate">{a.preco} · {a.publico_alvo}</p>
+                              </div>
+                              <Button
+                                variant="outline" size="sm"
+                                className="shrink-0 gap-1 text-xs"
+                                disabled={tableError}
+                                onClick={() => importTemplate(a)}
+                              >
+                                <Plus className="h-3 w-3" /> Adicionar
+                              </Button>
                             </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveOrder(a.id, a.ordem, "up")} disabled={idx === 0}>
-                                <ChevronUp className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveOrder(a.id, a.ordem, "down")} disabled={idx === dbList.length - 1}>
-                                <ChevronDown className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleAtivoMutation.mutate({ id: a.id, ativo: !a.ativo })}>
-                                {a.ativo ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                          </Button>
-                          <Button
-                            variant="ghost" size="icon"
-                            className="h-8 w-8"
-                            onClick={() => openEdit(a)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost" size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => setDeleteId(a.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                          </CardContent>
+                        </Card>
                       );
                     })}
                   </div>
-                )}
-              </div>
+                </div>
 
-            {/* Seção: Templates padrão */}
-            <div className="space-y-3">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                Templates padrão — clique para adicionar ao site
-              </h2>
-              <div className="grid gap-2">
-                {staticTemplates.map((a) => {
-                  const IconComp = getIconByName(a.icone);
-                  return (
-                    <Card key={a.id} className="border-dashed border-muted-foreground/25 opacity-80 hover:opacity-100 transition-opacity">
-                      <CardContent className="p-3">
-                        <div className="flex items-center gap-3">
-                          <div className={`h-12 w-20 rounded-lg bg-gradient-to-br ${a.gradiente} flex items-center justify-center shrink-0 overflow-hidden`}>
-                            <IconComp className="h-6 w-6 text-white/70" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-sm">{a.titulo}</span>
-                              {a.gratuito && <Badge className="bg-green-600 text-white text-[10px]">Gratuito</Badge>}
-                              {a.lista_espera && <Badge className="bg-amber-500 text-white text-[10px]">Lista de espera</Badge>}
-                            </div>
-                            <p className="text-xs text-muted-foreground truncate">{a.preco} · {a.publico_alvo}</p>
-                          </div>
-                          <Button
-                            variant="outline" size="sm"
-                            className="shrink-0 gap-1 text-xs"
-                            disabled={tableError}
-                            onClick={() => importTemplate(a)}
-                          >
-                            <Plus className="h-3 w-3" /> Adicionar
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
               </div>
+            )}
+          </TabsContent>
+
+          {/* ── Tab: Aparência ────────────────────────────────────────────── */}
+          <TabsContent value="aparencia" className="space-y-6 mt-6">
+
+            <p className="text-sm text-muted-foreground">
+              Personalize textos, imagens e seções da sua landing page. As alterações ficam visíveis ao clicar em "Salvar Aparência".
+            </p>
+
+            {/* Hero */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">🏠 Seção Principal (Hero)</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>Headline</Label>
+                    <Input
+                      value={landingConfig.hero.headline}
+                      onChange={e => setLandingConfig(c => ({ ...c, hero: { ...c.hero, headline: e.target.value } }))}
+                      placeholder={`Bem-vindo à ${currentUnidade?.nome || "sua escola"}`}
+                    />
+                    <p className="text-xs text-muted-foreground">Deixe em branco para usar "Bem-vindo à {currentUnidade?.nome}"</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Texto do Badge</Label>
+                    <Input
+                      value={landingConfig.hero.badge_texto}
+                      onChange={e => setLandingConfig(c => ({ ...c, hero: { ...c.hero, badge_texto: e.target.value } }))}
+                      placeholder="Inscrições Abertas"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Subtítulo</Label>
+                  <Textarea
+                    value={landingConfig.hero.subtitulo}
+                    onChange={e => setLandingConfig(c => ({ ...c, hero: { ...c.hero, subtitulo: e.target.value } }))}
+                    rows={2}
+                    placeholder="Conheça nossas atividades e faça sua inscrição online. Vagas limitadas."
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Texto do Botão CTA</Label>
+                  <Input
+                    value={landingConfig.hero.cta_texto}
+                    onChange={e => setLandingConfig(c => ({ ...c, hero: { ...c.hero, cta_texto: e.target.value } }))}
+                    placeholder="Ver Atividades"
+                    className="max-w-xs"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Imagem de Fundo (opcional)</Label>
+                  {landingConfig.hero.bg_image_url ? (
+                    <div className="relative w-full aspect-video max-w-md rounded-xl overflow-hidden border">
+                      <img src={landingConfig.hero.bg_image_url} alt="" className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => setLandingConfig(c => ({ ...c, hero: { ...c.hero, bg_image_url: "" } }))}
+                        className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 rounded-full p-1.5 text-white"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => heroBgRef.current?.click()}
+                      disabled={uploadingField === "hero.bg_image_url"}
+                      className="w-full max-w-md aspect-video rounded-xl border-2 border-dashed border-muted-foreground/25 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-primary/50 transition-colors"
+                    >
+                      {uploadingField === "hero.bg_image_url"
+                        ? <Loader2 className="h-8 w-8 animate-spin" />
+                        : <ImageIcon className="h-8 w-8" />}
+                      <span className="text-sm">Clique para adicionar imagem de fundo</span>
+                    </button>
+                  )}
+                  <input
+                    ref={heroBgRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadAparenciaImage(file, "hero.bg_image_url", url =>
+                        setLandingConfig(c => ({ ...c, hero: { ...c.hero, bg_image_url: url } }))
+                      );
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Sobre Nós */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">ℹ️ Sobre Nós</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Exibir seção</span>
+                    <Switch
+                      checked={landingConfig.secoes_ativas.sobre}
+                      onCheckedChange={v => setLandingConfig(c => ({ ...c, secoes_ativas: { ...c.secoes_ativas, sobre: v } }))}
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Título da Seção</Label>
+                  <Input
+                    value={landingConfig.sobre.titulo}
+                    onChange={e => setLandingConfig(c => ({ ...c, sobre: { ...c.sobre, titulo: e.target.value } }))}
+                    placeholder="Quem Somos"
+                    className="max-w-xs"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Texto</Label>
+                  <Textarea
+                    value={landingConfig.sobre.texto}
+                    onChange={e => setLandingConfig(c => ({ ...c, sobre: { ...c.sobre, texto: e.target.value } }))}
+                    rows={4}
+                    placeholder="Fale sobre a história, missão e valores da sua organização..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Imagem (opcional)</Label>
+                  {landingConfig.sobre.imagem_url ? (
+                    <div className="relative w-full max-w-sm aspect-video rounded-xl overflow-hidden border">
+                      <img src={landingConfig.sobre.imagem_url} alt="" className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => setLandingConfig(c => ({ ...c, sobre: { ...c.sobre, imagem_url: "" } }))}
+                        className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 rounded-full p-1.5 text-white"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => sobreImgRef.current?.click()}
+                      disabled={uploadingField === "sobre.imagem_url"}
+                      className="w-full max-w-sm aspect-video rounded-xl border-2 border-dashed border-muted-foreground/25 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-primary/50 transition-colors"
+                    >
+                      {uploadingField === "sobre.imagem_url"
+                        ? <Loader2 className="h-8 w-8 animate-spin" />
+                        : <ImageIcon className="h-8 w-8" />}
+                      <span className="text-sm">Clique para adicionar imagem</span>
+                    </button>
+                  )}
+                  <input
+                    ref={sobreImgRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadAparenciaImage(file, "sobre.imagem_url", url =>
+                        setLandingConfig(c => ({ ...c, sobre: { ...c.sobre, imagem_url: url } }))
+                      );
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Depoimentos */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">💬 Depoimentos</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Exibir seção</span>
+                    <Switch
+                      checked={landingConfig.secoes_ativas.depoimentos}
+                      onCheckedChange={v => setLandingConfig(c => ({ ...c, secoes_ativas: { ...c.secoes_ativas, depoimentos: v } }))}
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {landingConfig.depoimentos.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">Nenhum depoimento ainda. Adicione o primeiro!</p>
+                )}
+                {landingConfig.depoimentos.map((d, i) => (
+                  <div key={i} className="border rounded-xl p-4 space-y-3 bg-muted/20">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-muted-foreground">Depoimento {i + 1}</span>
+                      <Button
+                        variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+                        onClick={() => removeDepoimento(i)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Nome</Label>
+                        <Input
+                          value={d.nome}
+                          onChange={e => updateDepoimento(i, "nome", e.target.value)}
+                          placeholder="Maria Silva"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Foto (URL opcional)</Label>
+                        <Input
+                          value={d.foto_url}
+                          onChange={e => updateDepoimento(i, "foto_url", e.target.value)}
+                          placeholder="https://..."
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Texto do Depoimento</Label>
+                      <Textarea
+                        value={d.texto}
+                        onChange={e => updateDepoimento(i, "texto", e.target.value)}
+                        rows={2}
+                        placeholder="Meu filho adora as aulas! A equipe é incrível..."
+                      />
+                    </div>
+                  </div>
+                ))}
+                <Button variant="outline" size="sm" className="gap-1.5 w-full" onClick={addDepoimento}>
+                  <Plus className="h-4 w-4" /> Adicionar Depoimento
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Galeria */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">🖼️ Galeria de Fotos</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Exibir seção</span>
+                    <Switch
+                      checked={landingConfig.secoes_ativas.galeria}
+                      onCheckedChange={v => setLandingConfig(c => ({ ...c, secoes_ativas: { ...c.secoes_ativas, galeria: v } }))}
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {landingConfig.galeria.map((url, i) => (
+                    <div key={i} className="relative aspect-square group">
+                      <img src={url} alt="" className="w-full h-full object-cover rounded-xl" />
+                      <button
+                        onClick={() => removeGaleriaImage(i)}
+                        className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 rounded-full p-1 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => galeriaRef.current?.click()}
+                    disabled={!!uploadingField}
+                    className="aspect-square rounded-xl border-2 border-dashed border-muted-foreground/25 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary/50 transition-colors"
+                  >
+                    {uploadingField?.startsWith("galeria.")
+                      ? <Loader2 className="h-5 w-5 animate-spin" />
+                      : <Plus className="h-5 w-5" />}
+                    <span className="text-xs">Adicionar</span>
+                  </button>
+                </div>
+                <input
+                  ref={galeriaRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) uploadAparenciaImage(file, `galeria.${landingConfig.galeria.length}`, url =>
+                      setLandingConfig(c => ({ ...c, galeria: [...c.galeria, url] }))
+                    );
+                    e.target.value = "";
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">Passe o mouse sobre uma foto para removê-la</p>
+              </CardContent>
+            </Card>
+
+            {/* Save button */}
+            <div className="flex justify-end pb-6">
+              <Button
+                size="lg"
+                className="gap-2 shadow-md shadow-primary/20"
+                onClick={() => saveLandingConfigMutation.mutate(landingConfig)}
+                disabled={saveLandingConfigMutation.isPending}
+              >
+                {saveLandingConfigMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                Salvar Aparência
+              </Button>
             </div>
 
-          </div>
-        )}
+          </TabsContent>
+        </Tabs>
       </div>
 
-      {/* Edit/Create Dialog */}
+      {/* Dialog: Criar/Editar Atividade */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -432,8 +890,7 @@ const LandingEditor = () => {
                 </div>
               </div>
 
-              {/* Preview 16:9 — mesma proporção do card no site */}
-              <div className={`relative w-full aspect-video rounded-xl overflow-hidden border-2 border-dashed ${form.imagem_url ? 'border-transparent' : 'border-muted-foreground/20'} bg-gradient-to-br ${form.gradiente}`}>
+              <div className={`relative w-full aspect-video rounded-xl overflow-hidden border-2 border-dashed ${form.imagem_url ? "border-transparent" : "border-muted-foreground/20"} bg-gradient-to-br ${form.gradiente}`}>
                 {form.imagem_url ? (
                   <>
                     <img src={form.imagem_url} alt="" className="w-full h-full object-cover object-center" />
@@ -464,20 +921,15 @@ const LandingEditor = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <Button
-                  type="button" variant="outline" size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="gap-1.5"
-                >
+                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="gap-1.5">
                   {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
                   {uploading ? "Enviando..." : form.imagem_url ? "Trocar Foto" : "Escolher Foto"}
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  Tire uma foto da aula no celular e envie aqui. O sistema ajusta o enquadramento automaticamente.
+                  Tire uma foto da aula no celular e envie aqui. O sistema ajusta automaticamente.
                 </p>
               </div>
-              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageUpload} />
+              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={uploadActivityImage} />
             </div>
 
             {/* Cores e Ícone */}
@@ -628,11 +1080,9 @@ create table if not exists landing_atividades (
 
 alter table landing_atividades enable row level security;
 
--- Leitura pública (landing page)
 create policy "landing_read" on landing_atividades
   for select using (true);
 
--- Escrita para admins
 create policy "landing_write" on landing_atividades
   for all using (
     exists (

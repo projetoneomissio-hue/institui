@@ -13,6 +13,7 @@ export interface PublicTenant {
     email_contato?: string;
     tipo_instituicao?: string;
     feature_flags?: Record<string, boolean>;
+    landing_config?: Record<string, any>;
 }
 
 interface PublicTenantContextType {
@@ -64,7 +65,7 @@ export const PublicTenantProvider = ({ children }: { children: ReactNode }) => {
         supabase
             .from("unidades")
             .select(
-                "id, nome, slug, logo_url, custom_domain, whatsapp, instagram_url, cor_primaria, email_contato, tipo_instituicao, feature_flags"
+                "id, nome, slug, logo_url, custom_domain, whatsapp, instagram_url, cor_primaria, email_contato, tipo_instituicao, feature_flags, landing_config"
             )
             .eq("custom_domain", hostname)
             .maybeSingle()
