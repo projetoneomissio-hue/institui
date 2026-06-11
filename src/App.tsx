@@ -38,6 +38,7 @@ import { ReloadPrompt } from "./components/ReloadPrompt";
 import MatriculaOnline from "./pages/public/MatriculaOnline";
 import ResgatarConvite from "./pages/public/ResgatarConvite";
 import TenantLanding from "./pages/public/TenantLanding";
+import TenantAbout from "./pages/public/TenantAbout";
 import Ajuda from "./pages/Ajuda";
 
 // Direção
@@ -112,6 +113,7 @@ export const AppRoutes = () => {
       {/* <Route path="/checkout" element={<Checkout />} /> */}
       <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/org/:slug" element={<TenantLanding />} />
+      <Route path="/org/:slug/quem-somos" element={<TenantAbout />} />
       <Route path="/matricula/:slug" element={<MatriculaOnline />} />
       <Route path="/resgatar-convite" element={<ResgatarConvite />} />
 

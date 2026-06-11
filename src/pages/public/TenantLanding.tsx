@@ -37,6 +37,16 @@ interface LandingConfig {
         titulo?: string;
         subtitulo?: string;
     };
+    quem_somos?: {
+        titulo?: string;
+        subtitulo?: string;
+        historia?: string;
+        missao?: string;
+        visao?: string;
+        valores?: string;
+        equipe?: Array<{ nome: string; cargo: string; bio?: string; foto_url?: string }>;
+        mostrar_nav?: boolean;
+    };
 }
 
 // ── Resolução por slug (rota /org/:slug) ─────────────────────────────────────
@@ -211,6 +221,14 @@ const TenantLanding = () => {
                         <a href="#atividades" className="hidden sm:inline text-sm font-medium text-gray-600 hover:text-primary transition-colors">
                             Atividades
                         </a>
+                        {cfg.quem_somos?.mostrar_nav && (
+                            <Link
+                                to={`/org/${tenant.slug}/quem-somos`}
+                                className="hidden sm:inline text-sm font-medium text-gray-600 hover:text-primary transition-colors"
+                            >
+                                Quem Somos
+                            </Link>
+                        )}
                         <Link
                             to="/login"
                             className="text-sm font-medium text-gray-500 hover:text-primary transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-100"

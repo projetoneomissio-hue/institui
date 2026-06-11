@@ -93,6 +93,16 @@ interface LandingConfig {
     titulo: string;
     subtitulo: string;
   };
+  quem_somos: {
+    titulo: string;
+    subtitulo: string;
+    historia: string;
+    missao: string;
+    visao: string;
+    valores: string;
+    mostrar_nav: boolean;
+    equipe: Array<{ nome: string; cargo: string; bio: string; foto_url: string }>;
+  };
 }
 
 const defaultLandingConfig: LandingConfig = {
@@ -102,6 +112,10 @@ const defaultLandingConfig: LandingConfig = {
   galeria: [],
   secoes_ativas: { sobre: false, depoimentos: false, galeria: false },
   secao_atividades: { titulo: "", subtitulo: "" },
+  quem_somos: {
+    titulo: "", subtitulo: "", historia: "", missao: "", visao: "", valores: "",
+    mostrar_nav: false, equipe: [],
+  },
 };
 
 // ── Componente ─────────────────────────────────────────────────────────────────
@@ -173,6 +187,7 @@ const LandingEditor = () => {
         sobre: { ...defaultLandingConfig.sobre, ...(savedConfig.sobre || {}) },
         secoes_ativas: { ...defaultLandingConfig.secoes_ativas, ...(savedConfig.secoes_ativas || {}) },
         secao_atividades: { ...defaultLandingConfig.secao_atividades, ...((savedConfig as any).secao_atividades || {}) },
+        quem_somos: { ...defaultLandingConfig.quem_somos, ...((savedConfig as any).quem_somos || {}) },
         depoimentos: savedConfig.depoimentos || [],
         galeria: savedConfig.galeria || [],
       });
@@ -892,6 +907,177 @@ const LandingEditor = () => {
                     <span className="bg-muted px-1.5 py-0.5 rounded">JPG / PNG</span>
                     <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold">ideal: 800×800 px</span>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Quem Somos */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">👥 Quem Somos — Página Dedicada</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Acessível em <code className="bg-muted px-1 rounded text-[11px]">/org/{currentUnidade?.slug}/quem-somos</code>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Exibir no menu</span>
+                    <Switch
+                      checked={landingConfig.quem_somos.mostrar_nav}
+                      onCheckedChange={v => setLandingConfig(c => ({ ...c, quem_somos: { ...c.quem_somos, mostrar_nav: v } }))}
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>Título da página</Label>
+                    <Input
+                      value={landingConfig.quem_somos.titulo}
+                      onChange={e => setLandingConfig(c => ({ ...c, quem_somos: { ...c.quem_somos, titulo: e.target.value } }))}
+                      placeholder={`Conheça a ${currentUnidade?.nome || "organização"}`}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Subtítulo</Label>
+                    <Input
+                      value={landingConfig.quem_somos.subtitulo}
+                      onChange={e => setLandingConfig(c => ({ ...c, quem_somos: { ...c.quem_somos, subtitulo: e.target.value } }))}
+                      placeholder="Nossa história, nossa missão, nossa equipe."
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Nossa História</Label>
+                  <Textarea
+                    value={landingConfig.quem_somos.historia}
+                    onChange={e => setLandingConfig(c => ({ ...c, quem_somos: { ...c.quem_somos, historia: e.target.value } }))}
+                    rows={5}
+                    placeholder="Conte a história da sua organização: como surgiu, o que a motiva, marcos importantes..."
+                  />
+                </div>
+
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>Missão</Label>
+                    <Textarea
+                      value={landingConfig.quem_somos.missao}
+                      onChange={e => setLandingConfig(c => ({ ...c, quem_somos: { ...c.quem_somos, missao: e.target.value } }))}
+                      rows={3}
+                      placeholder="Nossa missão é..."
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Visão</Label>
+                    <Textarea
+                      value={landingConfig.quem_somos.visao}
+                      onChange={e => setLandingConfig(c => ({ ...c, quem_somos: { ...c.quem_somos, visao: e.target.value } }))}
+                      rows={3}
+                      placeholder="Nossa visão é ser..."
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Valores</Label>
+                    <Textarea
+                      value={landingConfig.quem_somos.valores}
+                      onChange={e => setLandingConfig(c => ({ ...c, quem_somos: { ...c.quem_somos, valores: e.target.value } }))}
+                      rows={3}
+                      placeholder="Respeito, Inclusão, Excelência..."
+                    />
+                  </div>
+                </div>
+
+                {/* Equipe */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-semibold">Equipe</Label>
+                    <Button
+                      variant="outline" size="sm" className="gap-1.5"
+                      onClick={() => setLandingConfig(c => ({
+                        ...c,
+                        quem_somos: {
+                          ...c.quem_somos,
+                          equipe: [...c.quem_somos.equipe, { nome: "", cargo: "", bio: "", foto_url: "" }],
+                        },
+                      }))}
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Adicionar Membro
+                    </Button>
+                  </div>
+
+                  {landingConfig.quem_somos.equipe.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-3">Nenhum membro adicionado ainda.</p>
+                  )}
+
+                  {landingConfig.quem_somos.equipe.map((m, i) => (
+                    <div key={i} className="border rounded-xl p-4 space-y-3 bg-muted/20">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-muted-foreground">Membro {i + 1}</span>
+                        <Button
+                          variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => setLandingConfig(c => ({
+                            ...c,
+                            quem_somos: { ...c.quem_somos, equipe: c.quem_somos.equipe.filter((_, idx) => idx !== i) },
+                          }))}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Nome</Label>
+                          <Input
+                            value={m.nome}
+                            onChange={e => {
+                              const eq = [...landingConfig.quem_somos.equipe];
+                              eq[i] = { ...eq[i], nome: e.target.value };
+                              setLandingConfig(c => ({ ...c, quem_somos: { ...c.quem_somos, equipe: eq } }));
+                            }}
+                            placeholder="Ana Silva"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Cargo</Label>
+                          <Input
+                            value={m.cargo}
+                            onChange={e => {
+                              const eq = [...landingConfig.quem_somos.equipe];
+                              eq[i] = { ...eq[i], cargo: e.target.value };
+                              setLandingConfig(c => ({ ...c, quem_somos: { ...c.quem_somos, equipe: eq } }));
+                            }}
+                            placeholder="Diretora Pedagógica"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Bio (opcional)</Label>
+                        <Input
+                          value={m.bio}
+                          onChange={e => {
+                            const eq = [...landingConfig.quem_somos.equipe];
+                            eq[i] = { ...eq[i], bio: e.target.value };
+                            setLandingConfig(c => ({ ...c, quem_somos: { ...c.quem_somos, equipe: eq } }));
+                          }}
+                          placeholder="15 anos de experiência em educação social..."
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Foto (URL ou deixe em branco para usar inicial do nome)</Label>
+                        <Input
+                          value={m.foto_url}
+                          onChange={e => {
+                            const eq = [...landingConfig.quem_somos.equipe];
+                            eq[i] = { ...eq[i], foto_url: e.target.value };
+                            setLandingConfig(c => ({ ...c, quem_somos: { ...c.quem_somos, equipe: eq } }));
+                          }}
+                          placeholder="https://..."
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
