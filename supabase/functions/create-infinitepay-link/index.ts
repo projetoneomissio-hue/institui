@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
-const INFINITEPAY_HANDLE = Deno.env.get("INFINITEPAY_HANDLE");
+const INFINITEPAY_HANDLE_FALLBACK = Deno.env.get("INFINITEPAY_HANDLE"); // fallback legado (Neo Missio)
 const INFINITEPAY_API_URL = "https://api.infinitepay.io/invoices/public/checkout/links";
 
 const ALLOWED_ORIGIN = Deno.env.get("APP_ORIGIN") ?? "https://sistema.neomissio.com.br";
@@ -64,15 +64,11 @@ serve(async (req) => {
         const { pagamentoId } = await req.json() as CreateLinkRequest;
         if (!pagamentoId) throw new Error("pagamentoId is required");
 
-        if (!INFINITEPAY_HANDLE) {
-            throw new Error("INFINITEPAY_HANDLE is missing. Configure your InfiniteTag in Supabase Secrets.");
-        }
-
-        // 5. Fetch Payment Details
+        // 5. Fetch Payment Details (inclui unidade_id para buscar gateway)
         const { data: pagamento, error: pagError } = await supabaseService
             .from("pagamentos")
             .select(`
-        id, valor, data_vencimento, status, referencia,
+        id, valor, data_vencimento, status, referencia, unidade_id,
         matricula:matriculas!inner(
           aluno:alunos!inner(
             nome_completo
@@ -87,6 +83,20 @@ serve(async (req) => {
             .single();
 
         if (pagError || !pagamento) throw new Error("Payment not found");
+
+        // 5b. Busca o gateway configurado pela unidade do pagamento
+        const { data: unidadeData } = await supabaseService
+            .from("unidades")
+            .select("gateway_config")
+            .eq("id", (pagamento as any).unidade_id)
+            .single();
+
+        const gatewayConfig = (unidadeData as any)?.gateway_config;
+        const INFINITEPAY_HANDLE = gatewayConfig?.handle || INFINITEPAY_HANDLE_FALLBACK;
+
+        if (!INFINITEPAY_HANDLE) {
+            throw new Error("Gateway não configurado. Acesse Configurações → Pagamentos para conectar seu intermediador financeiro.");
+        }
 
         if (pagamento.status === "pago") {
             throw new Error("Payment already completed");

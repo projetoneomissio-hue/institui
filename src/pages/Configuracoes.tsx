@@ -18,7 +18,7 @@ import {
   User, Lock, Bell, Loader2, Building2, TrendingUp, ChevronRight,
   LayoutGrid, ShieldCheck, Mail, Sliders, Heart, GraduationCap,
   DollarSign, Calendar, Users, Share2, Globe, CheckCircle2,
-  Camera, Trash2,
+  Camera, Trash2, CreditCard, Copy, ExternalLink,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -135,6 +135,9 @@ const Configuracoes = () => {
   const [emailFromName, setEmailFromName] = useState("");
   const [emailReplyTo, setEmailReplyTo] = useState("");
   const [emailSaved, setEmailSaved] = useState(false);
+  const [gatewayProvider, setGatewayProvider] = useState<string>("");
+  const [gatewayHandle, setGatewayHandle] = useState<string>("");
+  const [gatewaySaved, setGatewaySaved] = useState(false);
 
   // Sincroniza localFlags quando unidade muda
   useEffect(() => {
@@ -149,9 +152,10 @@ const Configuracoes = () => {
     { id: "security",     label: "Segurança",     description: "Senha e proteção da conta",             icon: Lock      },
     { id: "preferences",  label: "Preferências",  description: "Notificações e aparência",              icon: Bell      },
     ...(user?.activeRole === "direcao" ? [
-      { id: "organization", label: "Organização", description: "Identidade visual e dados da unidade",  icon: Building2 },
-      { id: "modules",      label: "Módulos",     description: "Ative ou desative funcionalidades",     icon: Sliders   },
-      { id: "email",        label: "Email",        description: "Nome do remetente e reply-to",          icon: Mail      },
+      { id: "organization", label: "Organização", description: "Identidade visual e dados da unidade",  icon: Building2  },
+      { id: "modules",      label: "Módulos",     description: "Ative ou desative funcionalidades",     icon: Sliders    },
+      { id: "email",        label: "Email",        description: "Nome do remetente e reply-to",          icon: Mail       },
+      { id: "pagamentos",   label: "Pagamentos",  description: "Gateway e intermediador financeiro",    icon: CreditCard },
     ] : []),
   ];
 
@@ -215,6 +219,42 @@ const Configuracoes = () => {
       setEmailFromName(cfg?.from_name ?? "");
       setEmailReplyTo(cfg?.reply_to ?? "");
       return cfg;
+    },
+  });
+
+  useQuery({
+    queryKey: ["gateway-config", currentUnidade?.id],
+    enabled: !!currentUnidade?.id && user?.activeRole === "direcao",
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("unidades")
+        .select("gateway_config")
+        .eq("id", currentUnidade!.id)
+        .single();
+      if (error) throw error;
+      const cfg = (data as any)?.gateway_config;
+      setGatewayProvider(cfg?.provider ?? "");
+      setGatewayHandle(cfg?.handle ?? "");
+      return cfg;
+    },
+  });
+
+  const saveGatewayMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentUnidade?.id) throw new Error("Nenhuma unidade selecionada");
+      const { error } = await supabase
+        .from("unidades")
+        .update({ gateway_config: { provider: gatewayProvider, handle: gatewayHandle.trim() } })
+        .eq("id", currentUnidade.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setGatewaySaved(true);
+      setTimeout(() => setGatewaySaved(false), 3000);
+      toast({ title: "Gateway salvo", description: "Pagamentos serão processados com as novas credenciais." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
     },
   });
 
@@ -848,6 +888,149 @@ const Configuracoes = () => {
                             <><CheckCircle2 className="h-4 w-4" /> Salvo!</>
                           ) : (
                             "Salvar"
+                          )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* ── PAGAMENTOS ─────────────────────────────────────────── */}
+              {activeTab === "pagamentos" && user?.activeRole === "direcao" && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                  <Card className="border-border/50 shadow-xl shadow-black/5">
+                    <CardHeader className="border-b border-border/30 pb-8">
+                      <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+                          <CreditCard className="h-6 w-6 text-emerald-500" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-2xl">Gateway de Pagamento</CardTitle>
+                          <CardDescription>
+                            Conecte o intermediador financeiro da sua organização. Os pagamentos dos responsáveis
+                            vão diretamente para a conta que você configurar aqui.
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-8 space-y-8">
+
+                      {/* Escolha do gateway */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-semibold">Intermediador de Pagamento</Label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          {[
+                            { id: "infinitepay", label: "InfinitePay", desc: "PIX e Cartão", available: true },
+                            { id: "asaas",       label: "Asaas",       desc: "PIX, Boleto e Cartão", available: false },
+                            { id: "mercadopago", label: "Mercado Pago",desc: "PIX e Cartão", available: false },
+                          ].map((gw) => (
+                            <button
+                              key={gw.id}
+                              type="button"
+                              disabled={!gw.available}
+                              onClick={() => gw.available && setGatewayProvider(gw.id)}
+                              className={cn(
+                                "relative flex flex-col items-start gap-1 rounded-xl border-2 p-4 text-left transition-all",
+                                gatewayProvider === gw.id
+                                  ? "border-emerald-500 bg-emerald-500/5"
+                                  : "border-border/50 hover:border-border",
+                                !gw.available && "opacity-40 cursor-not-allowed"
+                              )}
+                            >
+                              <span className="font-semibold text-sm">{gw.label}</span>
+                              <span className="text-xs text-muted-foreground">{gw.desc}</span>
+                              {!gw.available && (
+                                <span className="absolute top-2 right-2 text-[9px] font-bold uppercase tracking-wider text-muted-foreground border border-border/50 rounded px-1.5 py-0.5">
+                                  Em breve
+                                </span>
+                              )}
+                              {gatewayProvider === gw.id && (
+                                <CheckCircle2 className="absolute top-2 right-2 h-4 w-4 text-emerald-500" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Handle / credencial */}
+                      {gatewayProvider === "infinitepay" && (
+                        <div className="space-y-2">
+                          <Label htmlFor="gateway-handle">Seu InfiniteTag (Handle)</Label>
+                          <Input
+                            id="gateway-handle"
+                            placeholder="ex: neomissio"
+                            value={gatewayHandle}
+                            onChange={(e) => setGatewayHandle(e.target.value)}
+                            className="h-12 border-border/50 font-mono"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Encontre no painel InfinitePay → Configurações → InfiniteTag.
+                            Os pagamentos dos responsáveis irão direto para sua conta.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Webhook URL */}
+                      {gatewayProvider && (
+                        <div className="space-y-2">
+                          <Label>URL do Webhook</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              readOnly
+                              value={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/infinitepay-webhook`}
+                              className="h-12 border-border/50 font-mono text-xs bg-muted/30"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-12 w-12 shrink-0"
+                              onClick={() => {
+                                navigator.clipboard.writeText(
+                                  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/infinitepay-webhook`
+                                );
+                                toast({ title: "URL copiada!" });
+                              }}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Registre essa URL no painel do seu gateway em "Webhooks" para que as
+                            confirmações de pagamento cheguem automaticamente ao sistema.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Aviso de segurança */}
+                      <div className="rounded-xl bg-amber-500/5 border border-amber-500/20 p-4 flex gap-3">
+                        <ShieldCheck className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Segurança das credenciais</p>
+                          <p className="text-xs text-muted-foreground">
+                            O identificador é armazenado de forma segura e criptografada. Nunca compartilhe
+                            sua chave de API ou secret do webhook com terceiros.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end pt-2">
+                        <Button
+                          size="lg"
+                          onClick={() => saveGatewayMutation.mutate()}
+                          disabled={saveGatewayMutation.isPending || !gatewayProvider || !gatewayHandle.trim()}
+                          className={cn(
+                            "h-12 px-10 font-bold shadow-lg shadow-primary/20 gap-2",
+                            gatewaySaved && "bg-emerald-600 hover:bg-emerald-700"
+                          )}
+                        >
+                          {saveGatewayMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : gatewaySaved ? (
+                            <><CheckCircle2 className="h-4 w-4" /> Salvo!</>
+                          ) : (
+                            "Salvar Gateway"
                           )}
                         </Button>
                       </div>
