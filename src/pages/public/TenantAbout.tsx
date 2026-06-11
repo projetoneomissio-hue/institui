@@ -254,53 +254,80 @@ const TenantAbout = () => {
             {hasMVV && (
                 <section className="py-20 bg-gray-50">
                     <div className="container mx-auto px-4 max-w-5xl">
-                        <div className="text-center mb-12">
+                        <div className="text-center mb-14">
                             <Badge variant="outline" className="mb-3">Propósito</Badge>
                             <h2 className="text-3xl font-bold text-gray-900">O que nos move</h2>
                         </div>
-                        <div className={`grid gap-6 ${[qs.missao, qs.visao, qs.valores].filter(Boolean).length === 2 ? "md:grid-cols-2" : "md:grid-cols-3"}`}>
+                        <div className={`grid gap-12 items-start ${[qs.missao, qs.visao, qs.valores].filter(Boolean).length === 2 ? "md:grid-cols-2" : "md:grid-cols-3"}`}>
                             {qs.missao && (
-                                <div className="bg-white rounded-2xl p-7 border border-gray-100 shadow-sm space-y-4 group hover:border-primary/30 hover:shadow-md transition-all">
-                                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
-                                        <Target className="h-6 w-6 text-primary" />
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                                            <Target className="h-5 w-5 text-primary" />
+                                        </div>
+                                        <h3 className="font-bold text-xl text-gray-900">Missão</h3>
                                     </div>
-                                    <div>
-                                        <h3 className="font-bold text-lg mb-2 text-gray-900">Missão</h3>
-                                        <p className="text-sm text-gray-600 leading-relaxed">{qs.missao}</p>
-                                    </div>
+                                    <div className="h-px w-10 bg-primary/40 rounded-full" />
+                                    <p className="text-[15px] leading-relaxed" style={{ color: "#475569" }}>{qs.missao}</p>
                                 </div>
                             )}
                             {qs.visao && (
-                                <div className="bg-white rounded-2xl p-7 border border-gray-100 shadow-sm space-y-4 group hover:border-primary/30 hover:shadow-md transition-all">
-                                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
-                                        <Eye className="h-6 w-6 text-primary" />
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                                            <Eye className="h-5 w-5 text-primary" />
+                                        </div>
+                                        <h3 className="font-bold text-xl text-gray-900">Visão</h3>
                                     </div>
-                                    <div>
-                                        <h3 className="font-bold text-lg mb-2 text-gray-900">Visão</h3>
-                                        <p className="text-sm text-gray-600 leading-relaxed">{qs.visao}</p>
-                                    </div>
+                                    <div className="h-px w-10 bg-primary/40 rounded-full" />
+                                    <p className="text-[15px] leading-relaxed" style={{ color: "#475569" }}>{qs.visao}</p>
                                 </div>
                             )}
                             {qs.valores && (
-                                <div className="bg-white rounded-2xl p-7 border border-gray-100 shadow-sm space-y-4 group hover:border-primary/30 hover:shadow-md transition-all">
-                                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
-                                        <Heart className="h-6 w-6 text-primary" />
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                                            <Heart className="h-5 w-5 text-primary" />
+                                        </div>
+                                        <h3 className="font-bold text-xl text-gray-900">Valores</h3>
                                     </div>
-                                    <div>
-                                        <h3 className="font-bold text-lg mb-2 text-gray-900">Valores</h3>
-                                        {valores.length > 1 ? (
-                                            <ul className="mt-3 space-y-2">
-                                                {valores.map((v, i) => (
-                                                    <li key={i} className="flex items-start gap-2 text-sm text-gray-600 leading-relaxed">
-                                                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                                                        {v}
+                                    <div className="h-px w-10 bg-primary/40 rounded-full" />
+                                    {valores.length > 1 ? (
+                                        <ul className="space-y-3">
+                                            {valores.map((v, i) => {
+                                                // Linha de introdução (termina com ":") vira subtítulo
+                                                if (v.endsWith(":")) {
+                                                    return (
+                                                        <li key={i} className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#94a3b8" }}>
+                                                            {v.slice(0, -1)}
+                                                        </li>
+                                                    );
+                                                }
+                                                // "Nome: descrição" — negrito no nome
+                                                const colonIdx = v.indexOf(": ");
+                                                if (colonIdx > 0) {
+                                                    const nome = v.slice(0, colonIdx);
+                                                    const desc = v.slice(colonIdx + 2);
+                                                    return (
+                                                        <li key={i} className="flex items-start gap-2.5">
+                                                            <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                                                            <span className="text-[15px] leading-relaxed" style={{ color: "#475569" }}>
+                                                                <strong className="font-semibold text-gray-800">{nome}:</strong> {desc}
+                                                            </span>
+                                                        </li>
+                                                    );
+                                                }
+                                                return (
+                                                    <li key={i} className="flex items-start gap-2.5">
+                                                        <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                                                        <span className="text-[15px] leading-relaxed" style={{ color: "#475569" }}>{v}</span>
                                                     </li>
-                                                ))}
-                                            </ul>
-                                        ) : (
-                                            <p className="text-sm text-gray-600 leading-relaxed">{qs.valores}</p>
-                                        )}
-                                    </div>
+                                                );
+                                            })}
+                                        </ul>
+                                    ) : (
+                                        <p className="text-[15px] leading-relaxed" style={{ color: "#475569" }}>{qs.valores}</p>
+                                    )}
                                 </div>
                             )}
                         </div>
