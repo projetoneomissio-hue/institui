@@ -53,7 +53,37 @@ const DashboardProfessor = () => {
 
       const totalAlunos = turmasWithCounts.reduce((a, t) => a + t.alunosMatriculados, 0);
 
-      return { professor, turmas: turmasWithCounts, totalAlunos };
+      const hoje = new Date().toISOString().split("T")[0];
+      const turmaIds = turmasWithCounts.map(t => t.id);
+      const matriculaIdsByTurma: Record<string, string[]> = {};
+      for (const turma of turmasWithCounts) {
+        const { data: mats } = await supabase
+          .from("matriculas")
+          .select("id")
+          .eq("turma_id", turma.id)
+          .eq("status", "ativa");
+        matriculaIdsByTurma[turma.id] = (mats || []).map(m => m.id);
+      }
+      const turmasComChamadaHoje = new Set<string>();
+      if (turmaIds.length > 0) {
+        const allMatriculaIds = Object.values(matriculaIdsByTurma).flat();
+        if (allMatriculaIds.length > 0) {
+          const { data: presencasHoje } = await supabase
+            .from("presencas")
+            .select("matricula_id")
+            .in("matricula_id", allMatriculaIds)
+            .eq("data", hoje);
+          const matriculasComPresenca = new Set((presencasHoje || []).map(p => p.matricula_id));
+          for (const [turmaId, matIds] of Object.entries(matriculaIdsByTurma)) {
+            if (matIds.some(id => matriculasComPresenca.has(id))) {
+              turmasComChamadaHoje.add(turmaId);
+            }
+          }
+        }
+      }
+      const chamadasPendentes = turmasWithCounts.filter(t => !turmasComChamadaHoje.has(t.id)).length;
+
+      return { professor, turmas: turmasWithCounts, totalAlunos, chamadasPendentes };
     },
     enabled: !!user?.id,
   });
@@ -61,6 +91,7 @@ const DashboardProfessor = () => {
   const turmas = data?.turmas || [];
   const professor = data?.professor;
   const totalAlunos = data?.totalAlunos ?? 0;
+  const chamadasPendentes = data?.chamadasPendentes ?? 0;
 
   const comissaoLabel = professor
     ? professor.tipo_contrato === "parceiro"
@@ -101,9 +132,9 @@ const DashboardProfessor = () => {
           />
           <DashboardCard
             title="Chamadas Pendentes"
-            value={turmas.length}
+            value={chamadasPendentes}
             icon={ClipboardList}
-            description="turmas para registrar"
+            description="turmas sem chamada hoje"
             variant="ocupacao"
             isLoading={isLoading}
           />
