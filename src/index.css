@@ -173,6 +173,13 @@
   }
 }
 
+/* Texto de corpo em páginas públicas de tenant — garante cor neutra
+   independente de cascade ou variáveis CSS do tenant */
+.tenant-body-text {
+  color: #475569 !important;
+  -webkit-text-fill-color: #475569 !important;
+}
+
 /* --- MICRO-INTERAÇÕES GLOBAIS --- */
 @layer components {
 

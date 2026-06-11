@@ -219,9 +219,9 @@ const TenantAbout = () => {
                                 <h2 className="text-3xl font-bold text-gray-900">Como tudo começou</h2>
                             </div>
                         </div>
-                        <div className="prose prose-gray max-w-none">
+                        <div className="max-w-none">
                             {qs.historia.split(/\n\n+/).map((p, i) => (
-                                <p key={i} className="text-gray-600 leading-relaxed text-base mb-4 last:mb-0">{p}</p>
+                                <p key={i} className="text-base leading-relaxed mb-4 last:mb-0 tenant-body-text">{p}</p>
                             ))}
                         </div>
                     </div>
@@ -268,7 +268,7 @@ const TenantAbout = () => {
                                         <h3 className="font-bold text-xl text-gray-900">Missão</h3>
                                     </div>
                                     <div className="h-px w-10 bg-primary/40 rounded-full" />
-                                    <p className="text-[15px] leading-relaxed" style={{ color: "#475569" }}>{qs.missao}</p>
+                                    <p className="text-[15px] leading-relaxed tenant-body-text">{qs.missao}</p>
                                 </div>
                             )}
                             {qs.visao && (
@@ -280,7 +280,7 @@ const TenantAbout = () => {
                                         <h3 className="font-bold text-xl text-gray-900">Visão</h3>
                                     </div>
                                     <div className="h-px w-10 bg-primary/40 rounded-full" />
-                                    <p className="text-[15px] leading-relaxed" style={{ color: "#475569" }}>{qs.visao}</p>
+                                    <p className="text-[15px] leading-relaxed tenant-body-text">{qs.visao}</p>
                                 </div>
                             )}
                             {qs.valores && (
@@ -311,7 +311,7 @@ const TenantAbout = () => {
                                                     return (
                                                         <li key={i} className="flex items-start gap-2.5">
                                                             <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                                                            <span className="text-[15px] leading-relaxed" style={{ color: "#475569" }}>
+                                                            <span className="text-[15px] leading-relaxed tenant-body-text">
                                                                 <strong className="font-semibold text-gray-800">{nome}:</strong> {desc}
                                                             </span>
                                                         </li>
@@ -320,13 +320,13 @@ const TenantAbout = () => {
                                                 return (
                                                     <li key={i} className="flex items-start gap-2.5">
                                                         <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                                                        <span className="text-[15px] leading-relaxed" style={{ color: "#475569" }}>{v}</span>
+                                                        <span className="text-[15px] leading-relaxed tenant-body-text">{v}</span>
                                                     </li>
                                                 );
                                             })}
                                         </ul>
                                     ) : (
-                                        <p className="text-[15px] leading-relaxed" style={{ color: "#475569" }}>{qs.valores}</p>
+                                        <p className="text-[15px] leading-relaxed tenant-body-text">{qs.valores}</p>
                                     )}
                                 </div>
                             )}
