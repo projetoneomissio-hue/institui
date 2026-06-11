@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { useParams, Navigate, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Users, Trophy, Star, Loader2, Quote } from "lucide-react";
+import posthog from "posthog-js";
+import { hexToHSL } from "@/utils/colors";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePublicTenant, PublicTenant } from "@/contexts/PublicTenantContext";
@@ -30,6 +32,10 @@ interface LandingConfig {
         sobre?: boolean;
         depoimentos?: boolean;
         galeria?: boolean;
+    };
+    secao_atividades?: {
+        titulo?: string;
+        subtitulo?: string;
     };
 }
 
@@ -113,7 +119,26 @@ const TenantLanding = () => {
         if (!domainLoading) resolve();
     }, [slug, domainTenant, isCustomDomain, domainLoading]);
 
-    if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+    useEffect(() => {
+        if (tenant) {
+            posthog.capture("landing_page_viewed", {
+                tenant_slug: tenant.slug,
+                tenant_nome: tenant.nome,
+            });
+        }
+    }, [tenant?.id]);
+
+    useEffect(() => {
+        if (tenant?.cor_primaria) {
+            const hsl = hexToHSL(tenant.cor_primaria);
+            document.documentElement.style.setProperty("--primary", hsl);
+            document.documentElement.style.setProperty("--ring", hsl);
+        }
+        return () => {
+            document.documentElement.style.removeProperty("--primary");
+            document.documentElement.style.removeProperty("--ring");
+        };
+    }, [tenant?.cor_primaria]);
 
     if (loading || domainLoading) {
         return (
@@ -141,6 +166,7 @@ const TenantLanding = () => {
     const depoimentos = cfg.depoimentos || [];
     const galeria = cfg.galeria || [];
     const secoes = cfg.secoes_ativas || {};
+    const secaoAtividades = cfg.secao_atividades || {};
 
     const whatsappNumber = (tenant.whatsapp || "").replace(/\D/g, "");
     const heroHeadline = hero.headline || `Bem-vindo à ${tenant.nome}`;
@@ -148,15 +174,28 @@ const TenantLanding = () => {
     const heroBadge = hero.badge_texto || "Inscrições Abertas";
     const heroCta = hero.cta_texto || "Ver Atividades";
 
+    const activityNames = activities.slice(0, 4).map((a) => a.title).join(", ");
+    const seoTitle = `${tenant.nome} — Atividades | Inscrições Abertas`;
+    const seoDescription = activityNames
+        ? `${tenant.nome} oferece ${activityNames} e mais. Inscrições abertas, vagas limitadas. Faça sua inscrição online.`
+        : `Conheça as atividades e serviços de ${tenant.nome}. Inscrições abertas. Vagas limitadas.`;
+
     return (
         <div className="light min-h-screen bg-white text-gray-900">
-            <SeoHead
-                title={tenant.nome}
-                description={`Conheça as atividades e serviços de ${tenant.nome}. Faça sua inscrição online.`}
-            />
+            <SeoHead title={seoTitle} description={seoDescription} />
+
+            {/* Banner de preview para admins autenticados */}
+            {isAuthenticated && (
+                <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-500 text-amber-950 text-xs font-semibold flex items-center justify-between px-4 py-2 shadow-md">
+                    <span>Modo Preview — você está vendo o site público como visitante</span>
+                    <Link to="/direcao/landing" className="underline underline-offset-2 hover:opacity-80 transition-opacity">
+                        ← Voltar ao Editor
+                    </Link>
+                </div>
+            )}
 
             {/* Nav */}
-            <nav className="fixed top-0 w-full bg-background/95 backdrop-blur-sm border-b border-border z-50">
+            <nav className={`fixed w-full bg-background/95 backdrop-blur-sm border-b border-border z-50 ${isAuthenticated ? "top-8" : "top-0"}`}>
                 <div className="container mx-auto px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         {tenant.logo_url ? (
@@ -169,11 +208,11 @@ const TenantLanding = () => {
                         <span className="font-black text-xl tracking-tighter uppercase">{tenant.nome}</span>
                     </div>
                     <div className="flex gap-4 items-center">
-                        <a href="#atividades" className="hidden sm:inline text-sm font-medium hover:text-primary transition-colors">
+                        <a href="#atividades" className="text-sm font-medium hover:text-primary transition-colors">
                             Atividades
                         </a>
                         <Button size="sm" asChild>
-                            <Link to="/login">Acessar Sistema</Link>
+                            <Link to={`/matricula/${tenant.slug}`}>Fazer Inscrição</Link>
                         </Button>
                     </div>
                 </div>
@@ -205,8 +244,8 @@ const TenantLanding = () => {
                                         </Button>
                                     </a>
                                     {whatsappNumber && (
-                                        <a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noopener noreferrer">
-                                            <Button size="lg" variant="outline" className="gap-2 border-white/50 text-white hover:bg-white/10">
+                                        <a href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Olá! Vi as atividades da ${tenant.nome} e gostaria de saber sobre as vagas disponíveis.`)}`} target="_blank" rel="noopener noreferrer">
+                                            <Button size="lg" variant="outline" className="gap-2 border-white/50 text-white bg-transparent hover:bg-white/10">
                                                 Falar no WhatsApp
                                             </Button>
                                         </a>
@@ -238,9 +277,9 @@ const TenantLanding = () => {
 
                                 <div className="flex flex-wrap gap-6 pt-2">
                                     {[
-                                        { icon: Users, value: "Vagas", label: "disponíveis" },
-                                        { icon: Trophy, value: "Ativ.", label: "cadastradas" },
-                                        { icon: Star, value: "Online", label: "inscrição rápida" },
+                                        { icon: Trophy, value: String(activities.length), label: activities.length === 1 ? "atividade" : "atividades" },
+                                        { icon: Users, value: "Vagas", label: "abertas" },
+                                        { icon: Star, value: "100%", label: "online" },
                                     ].map(({ icon: Icon, value, label }) => (
                                         <div key={label} className="flex items-center gap-2">
                                             <Icon className="h-4 w-4 text-primary" />
@@ -258,7 +297,7 @@ const TenantLanding = () => {
                                         </Button>
                                     </a>
                                     {whatsappNumber && (
-                                        <a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noopener noreferrer">
+                                        <a href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Olá! Vi as atividades da ${tenant.nome} e gostaria de saber sobre as vagas disponíveis.`)}`} target="_blank" rel="noopener noreferrer">
                                             <Button size="lg" variant="outline" className="gap-2">
                                                 Falar no WhatsApp
                                             </Button>
@@ -271,29 +310,62 @@ const TenantLanding = () => {
                 )}
             </section>
 
-            {/* Sobre Nós */}
-            {secoes.sobre && sobre.texto && (
-                <section className="py-16 bg-muted/30">
+            {/* Activities */}
+            <ActivitiesSection
+                activities={activities}
+                slug={tenant.slug}
+                whatsapp={tenant.whatsapp}
+                titulo={secaoAtividades.titulo}
+                subtitulo={secaoAtividades.subtitulo}
+                unidadeId={tenant.id}
+                tenantNome={tenant.nome}
+            />
+
+            {/* Sobre Nós — depois das atividades: apresenta o produto primeiro, a história depois */}
+            {secoes.sobre && (sobre.texto || sobre.imagem_url) && (
+                <section className="py-20 bg-muted/20">
                     <div className="container mx-auto px-4">
-                        <div className={`max-w-5xl mx-auto ${sobre.imagem_url ? "grid md:grid-cols-2 gap-12 items-center" : "max-w-3xl"}`}>
-                            {sobre.imagem_url && (
-                                <img
-                                    src={sobre.imagem_url}
-                                    alt="Sobre nós"
-                                    className="w-full aspect-video object-cover rounded-2xl shadow-lg"
-                                />
-                            )}
-                            <div>
-                                <h2 className="text-3xl font-bold mb-4">{sobre.titulo || "Quem Somos"}</h2>
-                                <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{sobre.texto}</p>
+                        {sobre.imagem_url && sobre.texto ? (
+                            /* imagem + texto: 50/50, imagem com altura flexível */
+                            <div className="max-w-5xl mx-auto grid lg:grid-cols-2 gap-12 items-stretch">
+                                <div className="relative rounded-2xl overflow-hidden min-h-[300px] lg:min-h-[400px]">
+                                    <img
+                                        src={sobre.imagem_url}
+                                        alt="Sobre nós"
+                                        className="absolute inset-0 w-full h-full object-cover"
+                                    />
+                                </div>
+                                <div className="flex flex-col justify-center space-y-5 py-4">
+                                    <div>
+                                        <h2 className="text-3xl lg:text-4xl font-bold">{sobre.titulo || "Quem Somos"}</h2>
+                                        <div className="w-10 h-1 bg-primary rounded-full mt-3" />
+                                    </div>
+                                    <p className="text-muted-foreground leading-relaxed whitespace-pre-line lg:text-lg">{sobre.texto}</p>
+                                </div>
                             </div>
-                        </div>
+                        ) : sobre.imagem_url ? (
+                            /* só imagem: full-width com título sobreposto na parte de baixo */
+                            <div className="max-w-4xl mx-auto space-y-4">
+                                <div className="relative rounded-2xl overflow-hidden aspect-video">
+                                    <img src={sobre.imagem_url} alt="Sobre nós" className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                                    <div className="absolute bottom-6 left-8">
+                                        <h2 className="text-3xl font-bold text-white">{sobre.titulo || "Quem Somos"}</h2>
+                                        <div className="w-10 h-1 bg-primary rounded-full mt-2" />
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            /* só texto */
+                            <div className="max-w-2xl mx-auto space-y-4">
+                                <h2 className="text-3xl font-bold">{sobre.titulo || "Quem Somos"}</h2>
+                                <div className="w-10 h-1 bg-primary rounded-full" />
+                                <p className="text-muted-foreground leading-relaxed whitespace-pre-line text-lg">{sobre.texto}</p>
+                            </div>
+                        )}
                     </div>
                 </section>
             )}
-
-            {/* Activities */}
-            <ActivitiesSection activities={activities} />
 
             {/* Depoimentos */}
             {secoes.depoimentos && depoimentos.length > 0 && (
@@ -340,6 +412,51 @@ const TenantLanding = () => {
                         </div>
                     </div>
                 </section>
+            )}
+
+            {/* Final CTA */}
+            <section className="py-20 bg-gradient-to-br from-primary to-primary/80 text-white">
+                <div className="container mx-auto px-4 text-center space-y-6">
+                    <h2 className="text-3xl sm:text-4xl font-bold">Pronto para começar?</h2>
+                    <p className="text-white/80 max-w-xl mx-auto text-lg">
+                        Faça sua inscrição em minutos. Vagas limitadas — garanta a sua agora.
+                    </p>
+                    <div className="flex flex-wrap gap-4 justify-center pt-2">
+                        <Button size="lg" asChild className="bg-white text-primary hover:bg-white/90 font-bold shadow-lg gap-2">
+                            <Link to={`/matricula/${tenant.slug}`}>
+                                Fazer Inscrição
+                                <ArrowRight className="h-5 w-5" />
+                            </Link>
+                        </Button>
+                        {whatsappNumber && (
+                            <Button size="lg" asChild variant="outline" className="border-white/50 text-white bg-transparent hover:bg-white/10 gap-2">
+                                <a
+                                    href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Olá! Vi as atividades da ${tenant.nome} e gostaria de saber sobre as vagas disponíveis.`)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={() => posthog.capture("whatsapp_clicked", { location: "cta_final", tenant_nome: tenant.nome })}
+                                >
+                                    Falar no WhatsApp
+                                </a>
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            </section>
+
+            {/* Floating WhatsApp button */}
+            {whatsappNumber && (
+                <a
+                    href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Olá! Vi as atividades da ${tenant.nome} e gostaria de saber sobre as vagas disponíveis.`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="fixed bottom-6 right-6 z-50 flex items-center justify-center h-14 w-14 rounded-full shadow-lg shadow-green-500/40 bg-green-500 hover:bg-green-600 transition-colors"
+                    aria-label="Falar no WhatsApp"
+                >
+                    <svg viewBox="0 0 24 24" className="h-7 w-7 fill-white" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                    </svg>
+                </a>
             )}
 
             <LandingFooter tenant={tenant} />

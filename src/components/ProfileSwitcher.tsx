@@ -1,6 +1,8 @@
 import { useAuth, UserRole } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
     Building2,
     Users,
@@ -36,6 +38,20 @@ export const ProfileSwitcher = ({ isCollapsed = false }: ProfileSwitcherProps) =
     const { user, setActiveRole } = useAuth();
     const navigate = useNavigate();
 
+    const { data: avatarUrl } = useQuery({
+        queryKey: ["profile-avatar", user?.id],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from("profiles")
+                .select("avatar_url")
+                .eq("id", user!.id)
+                .single();
+            return (data as any)?.avatar_url as string | null ?? null;
+        },
+        enabled: !!user?.id,
+        staleTime: 5 * 60 * 1000,
+    });
+
     // Se não tiver usuário logado
     if (!user) return null;
 
@@ -61,8 +77,12 @@ export const ProfileSwitcher = ({ isCollapsed = false }: ProfileSwitcherProps) =
                 className="flex items-center justify-center w-full p-2 rounded-xl bg-card border border-border/50 shadow-sm hover:scale-105 transition-all duration-300 group"
                 title={`Trocar perfil (${activeConfig.label})`}
             >
-                <div className="h-7 w-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-[11px] uppercase shadow-sm group-hover:shadow-primary/20 transition-all">
-                    {user.name?.[0] || "?"}
+                <div className="h-7 w-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-[11px] uppercase shadow-sm group-hover:shadow-primary/20 transition-all overflow-hidden">
+                    {avatarUrl ? (
+                        <img src={avatarUrl} alt={user.name} className="h-full w-full object-cover" />
+                    ) : (
+                        user.name?.[0] || "?"
+                    )}
                 </div>
             </button>
         );
@@ -72,8 +92,12 @@ export const ProfileSwitcher = ({ isCollapsed = false }: ProfileSwitcherProps) =
     if (user.roles.length <= 1) {
         return (
             <div className="p-3 rounded-2xl bg-card border border-border/50 flex items-center gap-3 shadow-sm cursor-default">
-                <div className="h-10 w-10 shrink-0 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xs shadow-lg shadow-primary/20 uppercase">
-                    {user.name?.[0] || "?"}
+                <div className="h-10 w-10 shrink-0 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xs shadow-lg shadow-primary/20 uppercase overflow-hidden">
+                    {avatarUrl ? (
+                        <img src={avatarUrl} alt={user.name} className="h-full w-full object-cover" />
+                    ) : (
+                        user.name?.[0] || "?"
+                    )}
                 </div>
                 <div className="flex-1 min-w-0">
                     <p className="text-[11px] font-bold text-foreground truncate uppercase tracking-wide">{user.name}</p>
@@ -88,8 +112,12 @@ export const ProfileSwitcher = ({ isCollapsed = false }: ProfileSwitcherProps) =
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <div className="p-2.5 rounded-2xl bg-card border border-border/50 flex items-center gap-3 cursor-pointer hover:bg-accent hover:border-accent transition-all shadow-sm group outline-none">
-                    <div className="h-10 w-10 shrink-0 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xs shadow-lg shadow-primary/20 uppercase transition-transform group-hover:scale-105">
-                        {user.name?.[0] || "?"}
+                    <div className="h-10 w-10 shrink-0 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xs shadow-lg shadow-primary/20 uppercase transition-transform group-hover:scale-105 overflow-hidden">
+                        {avatarUrl ? (
+                            <img src={avatarUrl} alt={user.name} className="h-full w-full object-cover" />
+                        ) : (
+                            user.name?.[0] || "?"
+                        )}
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col items-start text-left">
                         <p className="text-[11px] w-full font-bold text-foreground truncate uppercase tracking-wide leading-tight">{user.name}</p>

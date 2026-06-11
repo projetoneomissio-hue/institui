@@ -89,6 +89,10 @@ interface LandingConfig {
     depoimentos: boolean;
     galeria: boolean;
   };
+  secao_atividades: {
+    titulo: string;
+    subtitulo: string;
+  };
 }
 
 const defaultLandingConfig: LandingConfig = {
@@ -97,6 +101,7 @@ const defaultLandingConfig: LandingConfig = {
   depoimentos: [],
   galeria: [],
   secoes_ativas: { sobre: false, depoimentos: false, galeria: false },
+  secao_atividades: { titulo: "", subtitulo: "" },
 };
 
 // ── Componente ─────────────────────────────────────────────────────────────────
@@ -167,6 +172,7 @@ const LandingEditor = () => {
         hero: { ...defaultLandingConfig.hero, ...(savedConfig.hero || {}) },
         sobre: { ...defaultLandingConfig.sobre, ...(savedConfig.sobre || {}) },
         secoes_ativas: { ...defaultLandingConfig.secoes_ativas, ...(savedConfig.secoes_ativas || {}) },
+        secao_atividades: { ...defaultLandingConfig.secao_atividades, ...((savedConfig as any).secao_atividades || {}) },
         depoimentos: savedConfig.depoimentos || [],
         galeria: savedConfig.galeria || [],
       });
@@ -404,7 +410,7 @@ const LandingEditor = () => {
             <p className="text-sm text-muted-foreground mt-0.5">Personalize o site público da sua organização</p>
           </div>
           <Button variant="outline" size="sm" asChild>
-            <a href="/" target="_blank" rel="noopener noreferrer" className="gap-1.5">
+            <a href={`/org/${currentUnidade?.slug}`} target="_blank" rel="noopener noreferrer" className="gap-1.5">
               <ExternalLink className="h-4 w-4" /> Ver Site
             </a>
           </Button>
@@ -639,6 +645,7 @@ const LandingEditor = () => {
                         ? <Loader2 className="h-8 w-8 animate-spin" />
                         : <ImageIcon className="h-8 w-8" />}
                       <span className="text-sm">Clique para adicionar imagem de fundo</span>
+                      <span className="text-xs opacity-60">ideal: 1920×1080 px · 16:9 · JPG/PNG</span>
                     </button>
                   )}
                   <input
@@ -653,6 +660,34 @@ const LandingEditor = () => {
                       );
                       e.target.value = "";
                     }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Seção de Atividades */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">🎯 Seção de Atividades</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Título da Seção</Label>
+                  <Input
+                    value={landingConfig.secao_atividades.titulo}
+                    onChange={e => setLandingConfig(c => ({ ...c, secao_atividades: { ...c.secao_atividades, titulo: e.target.value } }))}
+                    placeholder={`${dbList.length || 0} atividades para todas as idades`}
+                    className="max-w-md"
+                  />
+                  <p className="text-xs text-muted-foreground">Deixe em branco para usar o padrão</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Subtítulo</Label>
+                  <Textarea
+                    value={landingConfig.secao_atividades.subtitulo}
+                    onChange={e => setLandingConfig(c => ({ ...c, secao_atividades: { ...c.secao_atividades, subtitulo: e.target.value } }))}
+                    rows={2}
+                    placeholder="Do esporte à arte, do aprendizado ao aconselhamento. Encontre a atividade certa para você ou seu filho."
                   />
                 </div>
               </CardContent>
@@ -714,6 +749,7 @@ const LandingEditor = () => {
                         ? <Loader2 className="h-8 w-8 animate-spin" />
                         : <ImageIcon className="h-8 w-8" />}
                       <span className="text-sm">Clique para adicionar imagem</span>
+                      <span className="text-xs opacity-60">ideal: 800×450 px · 16:9 · JPG/PNG</span>
                     </button>
                   )}
                   <input
@@ -849,7 +885,14 @@ const LandingEditor = () => {
                     e.target.value = "";
                   }}
                 />
-                <p className="text-xs text-muted-foreground">Passe o mouse sobre uma foto para removê-la</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">Passe o mouse sobre uma foto para removê-la</p>
+                  <div className="flex gap-1.5 text-[10px] text-muted-foreground font-mono">
+                    <span className="bg-muted px-1.5 py-0.5 rounded">1:1</span>
+                    <span className="bg-muted px-1.5 py-0.5 rounded">JPG / PNG</span>
+                    <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold">ideal: 800×800 px</span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 

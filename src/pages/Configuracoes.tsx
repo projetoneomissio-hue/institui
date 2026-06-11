@@ -18,6 +18,7 @@ import {
   User, Lock, Bell, Loader2, Building2, TrendingUp, ChevronRight,
   LayoutGrid, ShieldCheck, Mail, Sliders, Heart, GraduationCap,
   DollarSign, Calendar, Users, Share2, Globe, CheckCircle2,
+  Camera, Trash2,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,6 +34,7 @@ const profileSchema = z.object({
   email: z.string().trim().email("Email inválido").max(255, "Email muito longo"),
   cpf: z.string().optional(),
   phone: z.string().trim().optional(),
+  avatar_url: z.string().optional(),
 }).refine((data) => {
   if (data.cpf) {
     const clean = unmaskCPF(data.cpf);
@@ -127,6 +129,7 @@ const Configuracoes = () => {
 
   const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
   const [activeTab, setActiveTab] = useState("profile");
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [localFlags, setLocalFlags] = useState<Record<FeatureKey, boolean>>(allFeatures);
   const [flagsSaved, setFlagsSaved] = useState(false);
   const [emailFromName, setEmailFromName] = useState("");
@@ -161,13 +164,14 @@ const Configuracoes = () => {
       if (!user?.id) return null;
       const { data, error } = await supabase
         .from("profiles")
-        .select("nome_completo, email, cpf, telefone")
+        .select("nome_completo, email, cpf, telefone, avatar_url")
         .eq("id", user.id)
         .single();
       if (error) throw error;
       return data;
     },
     enabled: !!user?.id,
+    refetchOnWindowFocus: false,
   });
 
   // ---------------------------------------------------------------------------
@@ -251,7 +255,7 @@ const Configuracoes = () => {
   // ---------------------------------------------------------------------------
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
-    defaultValues: { name: "", email: "", cpf: "", phone: "" },
+    defaultValues: { name: "", email: "", cpf: "", phone: "", avatar_url: "" },
   });
 
   useEffect(() => {
@@ -261,9 +265,33 @@ const Configuracoes = () => {
         email: profile.email || user?.email || "",
         cpf: profile.cpf ? formatCPF(profile.cpf) : "",
         phone: profile.telefone || "",
+        avatar_url: (profile as any).avatar_url || "",
       });
     }
-  }, [profile, user, profileForm]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile]);
+
+  const onUploadAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !user?.id) return;
+    const file = e.target.files[0];
+    const fileExt = file.name.split(".").pop();
+    const fileName = `avatars/${user.id}-${Date.now()}.${fileExt}`;
+    setIsUploadingAvatar(true);
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from("unidades")
+        .upload(fileName, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from("unidades").getPublicUrl(fileName);
+      profileForm.setValue("avatar_url", data.publicUrl, { shouldDirty: true });
+      toast({ title: "Foto carregada!", description: "Clique em salvar para confirmar." });
+    } catch (error: any) {
+      toast({ title: "Erro no upload", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUploadingAvatar(false);
+      e.target.value = "";
+    }
+  };
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormValues) => {
@@ -271,13 +299,14 @@ const Configuracoes = () => {
       const cleanCPF = data.cpf ? unmaskCPF(data.cpf) : null;
       const { error } = await supabase
         .from("profiles")
-        .update({ nome_completo: data.name, cpf: cleanCPF, telefone: data.phone })
+        .update({ nome_completo: data.name, cpf: cleanCPF, telefone: data.phone, avatar_url: data.avatar_url || null })
         .eq("id", user.id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-profile-settings", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["user-profile-progress", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["profile-avatar", user?.id] });
       toast({ title: "Perfil atualizado", description: "Suas informações foram atualizadas com sucesso." });
     },
     onError: (error) => {
@@ -386,13 +415,46 @@ const Configuracoes = () => {
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <Card className="border-border/50 shadow-xl shadow-black/5 bg-card">
                     <CardHeader className="border-b border-border/30 pb-8">
-                      <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-                          <User className="h-6 w-6 text-primary" />
+                      <div className="flex items-center gap-5">
+                        {/* Avatar upload */}
+                        <div className="relative group shrink-0">
+                          <div className="h-20 w-20 rounded-full border-2 border-dashed border-border overflow-hidden bg-muted/50 flex items-center justify-center shadow-inner">
+                            {isUploadingAvatar ? (
+                              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                            ) : profileForm.watch("avatar_url") ? (
+                              <img src={profileForm.watch("avatar_url")} alt="Foto de perfil" className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="text-3xl font-black text-primary uppercase select-none">
+                                {user?.name?.[0] || "?"}
+                              </span>
+                            )}
+                          </div>
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-full flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => document.getElementById("avatar-upload")?.click()}
+                              className="p-1.5 rounded-full bg-white/20 hover:bg-white/40 transition-colors"
+                              title="Alterar foto"
+                            >
+                              <Camera className="h-4 w-4 text-white" />
+                            </button>
+                            {profileForm.watch("avatar_url") && (
+                              <button
+                                type="button"
+                                onClick={() => profileForm.setValue("avatar_url", "", { shouldDirty: true })}
+                                className="p-1.5 rounded-full bg-white/20 hover:bg-white/40 transition-colors"
+                                title="Remover foto"
+                              >
+                                <Trash2 className="h-4 w-4 text-white" />
+                              </button>
+                            )}
+                          </div>
+                          <input id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={onUploadAvatar} />
                         </div>
                         <div>
                           <CardTitle className="text-2xl">Dados Pessoais</CardTitle>
                           <CardDescription>Atualize como você aparece no sistema</CardDescription>
+                          <p className="text-[11px] text-muted-foreground/60 mt-1.5">Passe o mouse sobre a foto para alterar</p>
                         </div>
                       </div>
                     </CardHeader>

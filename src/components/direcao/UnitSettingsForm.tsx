@@ -61,7 +61,8 @@ export const UnitSettingsForm = () => {
         cor_primaria: (currentUnidade as any).cor_primaria || "#D4AF37",
       });
     }
-  }, [currentUnidade, form]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUnidade?.id]);
 
   const onUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0 || !currentUnidade) return;
