@@ -43,6 +43,7 @@ import { Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { OnboardingResponsavel } from "@/components/responsavel/OnboardingResponsavel";
+import { capitalizeFullName } from "@/utils/text";
 import { compressImage } from "@/utils/compressImage";
 import { StudentProgressBar } from "@/components/responsavel/StudentProgressBar";
 import { ProfileProgressBar } from "@/components/responsavel/ProfileProgressBar";
@@ -438,67 +439,102 @@ const DashboardResponsavel = () => {
             <CardContent className="pt-6">
               {alunos && alunos.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {alunos.map((aluno) => (
-                    <div key={aluno.id} className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/50 hover:border-primary/30 transition-all hover:shadow-md group">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="h-14 w-14 border-2 border-primary/20 group-hover:border-primary transition-colors">
-                          {aluno.foto_url ? (
-                            <AvatarImage src={aluno.foto_url} className="object-cover" />
-                          ) : (
-                            <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
-                              {aluno.nome_completo.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          )}
-                        </Avatar>
-                        <div>
-                          <p className="font-bold text-foreground text-lg group-hover:text-primary transition-colors">{aluno.nome_completo}</p>
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-xs text-muted-foreground flex items-center gap-1 font-medium bg-muted px-2 py-0.5 rounded-full">
-                              Nascimento: {format(new Date(aluno.data_nascimento), "dd/MM/yyyy")}
-                            </span>
+                  {alunos.map((aluno) => {
+                    const alunoMatriculas = matriculas?.filter(m => (m.aluno as any)?.id === aluno.id) || [];
+                    const ativas = alunoMatriculas.filter(m => m.status === 'ativa').length;
+                    const pendentes = alunoMatriculas.filter(m => m.status === 'pendente').length;
+                    const emEspera = alunoMatriculas.filter(m => m.status === 'lista_espera').length;
+                    return (
+                      <div key={aluno.id} className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/50 hover:border-primary/30 transition-all hover:shadow-md group">
+                        <div className="flex items-center gap-4">
+                          <Avatar className="h-14 w-14 border-2 border-primary/20 group-hover:border-primary transition-colors">
+                            {aluno.foto_url ? (
+                              <AvatarImage src={aluno.foto_url} className="object-cover" />
+                            ) : (
+                              <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
+                                {aluno.nome_completo.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            )}
+                          </Avatar>
+                          <div>
+                            <p className="font-bold text-foreground text-lg group-hover:text-primary transition-colors">{capitalizeFullName(aluno.nome_completo)}</p>
+                            <div className="flex items-center gap-3 mt-1">
+                              <span className="text-xs text-muted-foreground flex items-center gap-1 font-medium bg-muted px-2 py-0.5 rounded-full">
+                                Nascimento: {format(new Date(aluno.data_nascimento), "dd/MM/yyyy")}
+                              </span>
+                            </div>
+                            <StudentProgressBar aluno={aluno} />
+                            {alunoMatriculas.length > 0 && (
+                              <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                                {ativas > 0 && (
+                                  <Badge variant="outline" className="text-[10px] py-0 bg-success/10 text-success border-success/20">
+                                    <CheckCircle2 className="h-2.5 w-2.5 mr-1" />{ativas} ativa{ativas > 1 ? 's' : ''}
+                                  </Badge>
+                                )}
+                                {pendentes > 0 && (
+                                  <Badge variant="outline" className="text-[10px] py-0 bg-warning/10 text-warning border-warning/20">
+                                    <Clock className="h-2.5 w-2.5 mr-1" />{pendentes} pendente{pendentes > 1 ? 's' : ''}
+                                  </Badge>
+                                )}
+                                {emEspera > 0 && (
+                                  <Badge variant="outline" className="text-[10px] py-0 bg-amber-50 text-amber-700 border-amber-200">
+                                    {emEspera} na espera
+                                  </Badge>
+                                )}
+                              </div>
+                            )}
                           </div>
-                          <StudentProgressBar aluno={aluno} />
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
+                            onClick={() => {
+                              const anamnese = aluno.anamneses?.[0] || {};
+                              setEditingAluno(aluno);
+                              setCep("");
+                              setCepError(null);
+                              setFormData({
+                                nome: aluno.nome_completo,
+                                data_nascimento: aluno.data_nascimento,
+                                cpf: formatCPF(aluno.cpf || ""),
+                                telefone: aluno.telefone || "",
+                                endereco: aluno.endereco || "",
+                                bairro: aluno.bairro || "",
+                                alergias: anamnese.alergias || aluno.alergias || "",
+                                medicamentos: anamnese.medicamentos || aluno.medicamentos || "",
+                                observacoes: anamnese.observacoes || aluno.observacoes || "",
+                                foto_url: aluno.foto_url || null,
+                                tipoSanguineo: anamnese.tipo_sanguineo || "",
+                                isPne: anamnese.is_pne || false,
+                                pneCid: anamnese.pne_cid || "",
+                                temLaudo: anamnese.tem_laudo || false,
+                                laudoUrl: anamnese.laudo_url || "",
+                                contatoEmergenciaNome: anamnese.contato_emergencia_nome || "",
+                                contatoEmergenciaTelefone: anamnese.contato_emergencia_telefone || "",
+                                contatoEmergenciaRelacao: anamnese.contato_emergencia_relacao || "",
+                                doenca_cronica: anamnese.doenca_cronica || "",
+                              });
+                              setIsDialogOpen(true);
+                            }}
+                          >
+                            <Edit2 className="h-4 w-4 mr-1.5" /> Editar
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-full gap-1 border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+                            asChild
+                          >
+                            <Link to={`/responsavel/nova-matricula?aluno_id=${aluno.id}`}>
+                              <ClipboardList className="h-3.5 w-3.5" /> Matricular
+                            </Link>
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
-                          onClick={() => {
-                            const anamnese = aluno.anamneses?.[0] || {};
-                            setEditingAluno(aluno);
-                            setCep("");
-                            setCepError(null);
-                            setFormData({
-                              nome: aluno.nome_completo,
-                              data_nascimento: aluno.data_nascimento,
-                              cpf: formatCPF(aluno.cpf || ""),
-                              telefone: aluno.telefone || "",
-                              endereco: aluno.endereco || "",
-                              bairro: aluno.bairro || "",
-                              alergias: anamnese.alergias || aluno.alergias || "",
-                              medicamentos: anamnese.medicamentos || aluno.medicamentos || "",
-                              observacoes: anamnese.observacoes || aluno.observacoes || "",
-                              foto_url: aluno.foto_url || null,
-                              tipoSanguineo: anamnese.tipo_sanguineo || "",
-                              isPne: anamnese.is_pne || false,
-                              pneCid: anamnese.pne_cid || "",
-                              temLaudo: anamnese.tem_laudo || false,
-                              laudoUrl: anamnese.laudo_url || "",
-                              contatoEmergenciaNome: anamnese.contato_emergencia_nome || "",
-                              contatoEmergenciaTelefone: anamnese.contato_emergencia_telefone || "",
-                              contatoEmergenciaRelacao: anamnese.contato_emergencia_relacao || "",
-                              doenca_cronica: anamnese.doenca_cronica || "",
-                            });
-                            setIsDialogOpen(true);
-                          }}
-                        >
-                          <Edit2 className="h-4 w-4 mr-1.5" /> Editar
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-8">

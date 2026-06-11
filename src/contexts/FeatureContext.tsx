@@ -1,14 +1,15 @@
 import { useUnidade } from "./UnidadeContext";
 
 export type FeatureKey =
-  | "saude"          // Anamnese, PNE, dados médicos
-  | "predio"         // Gestão do espaço físico e locações
-  | "academico"      // Série, grade de avaliação, chamada formal, bimestre
-  | "comissoes"      // Comissões para instrutores/professores
-  | "calendario"     // Calendário de eventos e feriados
-  | "voluntarios"    // Role secretaria e gestão de voluntários
-  | "indicacoes"     // Sistema de referência e rastreio de leads
-  | "landing_publica"; // Landing page pública e matrícula online
+  | "saude"                        // Anamnese, PNE, dados médicos
+  | "predio"                       // Gestão do espaço físico e locações
+  | "academico"                    // Série, grade de avaliação, chamada formal, bimestre
+  | "comissoes"                    // Comissões para instrutores/professores
+  | "calendario"                   // Calendário de eventos e feriados
+  | "voluntarios"                  // Role secretaria e gestão de voluntários
+  | "indicacoes"                   // Sistema de referência e rastreio de leads
+  | "landing_publica"              // Landing page pública e matrícula online
+  | "matricula_aprovacao_automatica"; // Aprovação automática quando há vaga disponível
 
 const DEFAULT_FLAGS: Record<FeatureKey, boolean> = {
   saude: true,
@@ -19,6 +20,7 @@ const DEFAULT_FLAGS: Record<FeatureKey, boolean> = {
   voluntarios: true,
   indicacoes: false,
   landing_publica: true,
+  matricula_aprovacao_automatica: false,
 };
 
 /**

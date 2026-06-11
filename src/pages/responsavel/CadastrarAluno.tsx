@@ -73,6 +73,7 @@ const CadastrarAluno = () => {
   });
 
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
+  const [savedAlunoId, setSavedAlunoId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadingLaudo, setUploadingLaudo] = useState(false);
   const [cpfError, setCpfError] = useState<string | null>(null);
@@ -182,7 +183,7 @@ const CadastrarAluno = () => {
         }
       }
 
-      const { error } = await supabase.from("alunos").insert({
+      const { data: insertedAluno, error } = await supabase.from("alunos").insert({
         responsavel_id: user?.id,
         nome_completo: formData.nomeCompleto,
         data_nascimento: formData.dataNascimento,
@@ -199,21 +200,15 @@ const CadastrarAluno = () => {
         autoriza_imagem: formData.autorizaImagem,
         declaracao_assinada: formData.declaracaoAssinada,
         ...(currentUnidade?.id ? { unidade_id: currentUnidade.id } : {}),
-      });
+      }).select("id").single();
 
       if (error) throw error;
 
-      // Save health info in Anamneses table
-      const { data: newAluno } = await supabase
-        .from("alunos")
-        .select("id")
-        .eq("cpf", cleanCpf)
-        .eq("nome_completo", formData.nomeCompleto)
-        .maybeSingle();
+      const newAlunoId = insertedAluno?.id ?? null;
 
-      if (newAluno) {
+      if (newAlunoId) {
         await supabase.from("anamneses").upsert({
-          aluno_id: newAluno.id,
+          aluno_id: newAlunoId,
           alergias: formData.alergias || null,
           medicamentos: formData.medicamentos || null,
           is_pne: formData.isPne,
@@ -229,8 +224,11 @@ const CadastrarAluno = () => {
           observacoes: formData.observacoes || null,
         });
       }
+
+      return newAlunoId;
     },
-    onSuccess: async () => {
+    onSuccess: async (newAlunoId) => {
+      setSavedAlunoId(newAlunoId);
       // Trigger welcome email (fire and forget / robust handling)
       try {
         if (user?.email && formData.nomeCompleto) {
@@ -969,7 +967,12 @@ const CadastrarAluno = () => {
                 setFotoUrl(null);
                 setUploadingLaudo(false); // Reset laudo uploading state
               }}>Cadastrar Outro Aluno</AlertDialogAction>
-              <AlertDialogAction className="bg-neomissio-primary" onClick={() => navigate("/responsavel/nova-matricula")}>
+              <AlertDialogAction className="bg-neomissio-primary" onClick={() => {
+                const url = savedAlunoId
+                  ? `/responsavel/nova-matricula?aluno_id=${savedAlunoId}`
+                  : "/responsavel/nova-matricula";
+                navigate(url);
+              }}>
                 Matricular em Atividade <ArrowRight className="ml-2 h-4 w-4" />
               </AlertDialogAction>
             </AlertDialogFooter>

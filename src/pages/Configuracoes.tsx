@@ -18,7 +18,7 @@ import {
   User, Lock, Bell, Loader2, Building2, TrendingUp, ChevronRight,
   LayoutGrid, ShieldCheck, Mail, Sliders, Heart, GraduationCap,
   DollarSign, Calendar, Users, Share2, Globe, CheckCircle2,
-  Camera, Trash2, CreditCard, Copy, ExternalLink,
+  Camera, Trash2, CreditCard, Copy, ExternalLink, Zap,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -114,6 +114,13 @@ const MODULES: { key: FeatureKey; label: string; description: string; icon: Reac
     description: "Landing page pública da instituição com formulário de matrícula online.",
     icon: Globe,
     color: "text-indigo-500 bg-indigo-500/10",
+  },
+  {
+    key: "matricula_aprovacao_automatica",
+    label: "Aprovação Automática de Matrícula",
+    description: "Aprova a matrícula automaticamente quando há vaga disponível na turma. Desligado: toda solicitação passa pela direção ou secretaria antes de ser confirmada.",
+    icon: Zap,
+    color: "text-yellow-500 bg-yellow-500/10",
   },
 ];
 
